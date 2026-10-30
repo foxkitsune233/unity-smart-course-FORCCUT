@@ -1,0 +1,10 @@
+/Library/
+/Temp/
+/Obj/
+/Logs/
+/UserSettings/
+/Build/
+/Tests/bin/
+/Tests/obj/
+/Evidence/*.log
+/.vs/

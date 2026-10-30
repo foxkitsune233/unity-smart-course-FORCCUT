@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Unity脚本编程与游戏开发智慧课程，连接章节学习、视频笔记与场景实操。">
+  <title>学习首页 · Unity研习室</title>
+  <link rel="stylesheet" href="portal.css">
+  <link rel="stylesheet" href="curriculum.css">
+  <link rel="stylesheet" href="app-shell.css">
+</head>
+<body class="home-page">
+  <a class="skip-link" href="#main-content">跳到学习内容</a>
+
+  <aside class="sidebar">
+    <a class="brand" href="./" aria-label="Unity 研习室首页">
+      <span class="brand-symbol" aria-hidden="true">U<span>·</span></span>
+      <span><strong>Unity 研习室</strong><small>LEARN · TEST · BUILD</small></span>
+    </a>
+
+    <p class="nav-caption">学习空间 / WORKSPACE</p>
+    <nav aria-label="主要导航">
+      <a class="nav-link active" href="#/home" data-route="home"><span data-icon="home" aria-hidden="true"></span><span>学习首页</span></a>
+      <a class="nav-link" href="#/directory" data-route="directory"><span data-icon="book" aria-hidden="true"></span><span>课程目录</span></a>
+      <a class="nav-link" href="#/notes" data-route="notes"><span data-icon="note" aria-hidden="true"></span><span>学习笔记</span></a>
+      <a class="nav-link" href="tasks.html"><span data-icon="check" aria-hidden="true"></span><span>我的任务</span></a>
+      <a id="nav-lab" class="nav-link" href="/lab/" target="_blank" rel="noopener"><span data-icon="cube" aria-hidden="true"></span><span>实操实验</span><span class="nav-external" data-icon="external" aria-hidden="true"></span></a>
+    </nav>
+
+    <div class="sidebar-index" aria-hidden="true">
+      <span>COURSE INDEX</span>
+      <strong>01</strong>
+      <p>脚本编程<br>与游戏开发</p>
+    </div>
+
+    <div class="sidebar-note">
+      <span class="sidebar-note-icon" data-icon="layers" aria-hidden="true"></span>
+      <strong>从理解，到运行</strong>
+      <p>读懂一段脚本，再用一次场景运行验证你的判断。</p>
+      <a href="/lab/" target="_blank" rel="noopener">打开实操空间 <span data-icon="arrow" aria-hidden="true"></span></a>
+    </div>
+
+    <div class="sidebar-foot"><span class="small-dot"></span>Unity 2021 学习环境<small>课程学时载入中</small></div>
+  </aside>
+
+  <div class="home-workspace">
+    <header class="portal-topbar">
+      <div class="breadcrumb"><span>智慧课程</span><span>/</span><strong id="breadcrumb-current">我的学习</strong></div>
+      <div class="topbar-actions">
+        <button class="text-button" data-open-about><span data-icon="info" aria-hidden="true"></span>课程说明</button>
+        <span class="profile"><span class="avatar">学</span><span>学习者</span></span>
+      </div>
+    </header>
+
+    <main id="main-content" class="home-content">
+
+      <!-- ============ 视图：学习首页 / 仪表盘 ============ -->
+      <section class="view active" data-route="home" aria-labelledby="home-title">
+        <div class="page-heading">
+          <div><span class="eyebrow">COURSE WORKSPACE / 2026</span><h1 id="home-title">我的学习空间</h1><p>沿教材建立概念，在场景中验证理解。</p></div>
+          <span class="course-type">专业课程 <span>·</span> C# / Unity</span>
+        </div>
+
+        <section class="course-hero" aria-labelledby="course-title">
+          <div class="hero-copy">
+            <div class="hero-kicker"><span class="tag green">Unity 2021</span><span>教材导学 · 视频学习 · 场景实训</span></div>
+            <h2 id="course-title">Unity 3D 脚本编程<br>与游戏开发</h2>
+            <p>从对象与组件出发，理解脚本如何驱动场景，逐步走进物理、动画与游戏逻辑。</p>
+            <div class="hero-actions">
+              <a id="continue-learning" class="button primary" href="watch.html?lesson=lesson-01"><span data-icon="play" aria-hidden="true"></span><span id="continue-label">开始第一节</span></a>
+              <a class="button secondary" href="#/directory"><span data-icon="book" aria-hidden="true"></span><span>浏览课程目录</span></a>
+            </div>
+            <div class="hero-next"><span class="next-label" id="continue-eyebrow">建议从这里开始</span><strong id="continue-title">Unity脚本概览</strong></div>
+          </div>
+
+          <div class="hero-art" aria-hidden="true">
+            <div class="blueprint-head"><span>SCENE / SCRIPT</span><span>01 — 04</span></div>
+            <svg class="blueprint-scene" viewBox="0 0 520 310" role="presentation">
+              <defs>
+                <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse"><path d="M26 0H0V26" fill="none" stroke="currentColor" stroke-width=".65"/></pattern>
+              </defs>
+              <rect x="0" y="0" width="520" height="310" fill="url(#grid)" opacity=".42"/>
+              <path d="M64 244L254 142L449 230L260 294Z" fill="none" stroke="currentColor" stroke-width="1.2"/>
+              <path d="M254 142V57M254 142L383 189M254 142L137 190" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <path d="M254 57l-7 14h14zM383 189l-15-1 6 12zM137 190l15-1-6 12z" fill="currentColor"/>
+              <g class="blueprint-cube"><path d="M218 119l47-25 45 24-47 26z"/><path d="M218 119v50l45 25v-50z"/><path d="M263 144l47-26v51l-47 25z"/></g>
+              <circle cx="381" cy="98" r="22" fill="none" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M309 119C345 119 346 98 358 98" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 5"/>
+              <rect x="36" y="36" width="119" height="66" rx="2" fill="none" stroke="currentColor"/>
+              <path d="M49 52h67M49 65h84M49 78h51" stroke="currentColor" stroke-width="2"/>
+              <text x="41" y="120" fill="currentColor" font-size="10" font-family="Consolas,monospace">MonoBehaviour.cs</text>
+              <text x="335" y="139" fill="currentColor" font-size="10" font-family="Consolas,monospace">Rigidbody</text>
+              <text x="267" y="52" fill="currentColor" font-size="10" font-family="Consolas,monospace">Y</text>
+              <text x="390" y="191" fill="currentColor" font-size="10" font-family="Consolas,monospace">X</text>
+              <text x="116" y="192" fill="currentColor" font-size="10" font-family="Consolas,monospace">Z</text>
+            </svg>
+            <div class="blueprint-foot"><span>对象</span><i></i><span>组件</span><i></i><span>行为</span><i></i><strong>运行</strong></div>
+            <span class="art-caption">从一行代码，到一个会动的世界。</span>
+          </div>
+        </section>
+
+        <section class="learning-overview" aria-label="学习概况">
+          <div class="overview-item"><span class="overview-icon" data-icon="book" aria-hidden="true"></span><div><span>教学章节</span><strong><span id="chapter-total">—</span> <small>章</small></strong></div></div>
+          <div class="overview-item"><span class="overview-icon mint" data-icon="check" aria-hidden="true"></span><div><span>已学单元</span><strong><span id="completed-count">0</span> <small id="unit-total">/ —</small></strong></div></div>
+          <div class="overview-item"><span class="overview-icon blue" data-icon="note" aria-hidden="true"></span><div><span>学习笔记</span><strong><span id="notes-count">0</span> <small>条</small></strong></div></div>
+          <div class="overview-progress"><div><span>课程学习进度</span><strong id="progress-percent">0%</strong></div><progress id="course-progress" max="100" value="0" aria-label="课程学习进度"></progress><small id="progress-note">进度只记录已确认完成的学习单元。</small></div>
+        </section>
+
+        <div class="home-bottom-grid">
+          <section class="practice-callout">
+            <div class="practice-copy"><span class="eyebrow">03 / LEARN BY DOING</span><h2>看完，去场景里试一试</h2><p>拖入对象、挂载脚本、调整参数，再观察运行结果。实验模板将操作约束在当前教学目标内。</p><a class="inline-link" href="/lab/" target="_blank" rel="noopener">进入实操实验 <span data-icon="external" aria-hidden="true"></span></a></div>
+            <div class="practice-visual" aria-hidden="true"><span>Scene</span><div class="mini-cube"></div><span>Play <b>▶</b></span></div>
+          </section>
+          <section class="recent-notes">
+            <div class="section-top compact"><div><span class="section-index">FIELD NOTES</span><h2>最近的学习记录</h2></div><a id="all-notes-link" href="#/notes">查看全部 <span data-icon="arrow" aria-hidden="true"></span></a></div>
+            <div id="recent-notes-list" class="recent-notes-list"></div>
+          </section>
+        </div>
+
+        <footer class="page-footer"><span>教材：《Unity 3D脚本编程与游戏开发》 · 马遥、沈琰</span><button class="text-button" data-open-about>查看课程说明</button></footer>
+      </section>
+
+      <!-- ============ 视图：课程目录 ============ -->
+      <section class="view" data-route="directory" aria-labelledby="directory-title">
+        <div class="page-heading">
+          <div><span class="eyebrow">COURSE MAP / 课程目录</span><h1 id="directory-title">课程目录</h1><p id="directory-lead">章节与教材对应；每节关联导学、视频、笔记与实训。</p></div>
+          <span class="section-count">课程目录载入中</span>
+        </div>
+        <div class="directory-toolbar">
+          <div class="filter-group" role="group" aria-label="章节状态">
+            <button class="filter-button active" data-filter="all" aria-pressed="true">全部章节</button>
+            <button class="filter-button" data-filter="pending" aria-pressed="false">未学习</button>
+            <button class="filter-button" data-filter="completed" aria-pressed="false">已学习</button>
+          </div>
+          <label class="search-field"><span data-icon="search" aria-hidden="true"></span><span class="sr-only">搜索章节</span><input id="course-search" type="search" placeholder="搜索章节、知识点…"></label>
+        </div>
+        <div id="chapter-grid" class="chapter-grid"></div>
+        <div id="search-empty" class="empty-state" hidden><span data-icon="search" aria-hidden="true"></span><h3>没有找到对应章节</h3><p>试试“物理”“动画”或更短的关键词。</p><button id="clear-search" class="button secondary">查看全部章节</button></div>
+      </section>
+
+      <!-- ============ 视图：学习笔记 ============ -->
+      <section class="view" data-route="notes" aria-labelledby="notes-view-title">
+        <div class="page-heading">
+          <div><span class="eyebrow">MY NOTES / 学习笔记</span><h1 id="notes-view-title">学习笔记</h1><p>按课时记录的观察与概念；点击可回到对应学习单元。</p></div>
+          <span class="section-count"><strong id="all-notes-count">0</strong> 条笔记</span>
+        </div>
+        <div id="all-notes-list" class="all-notes-list"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <dialog id="about-dialog" class="modal">
+    <div class="modal-heading"><div><span class="eyebrow">ABOUT THIS COURSE</span><h2>关于这门课程</h2></div><button class="icon-button" data-close-dialog aria-label="关闭课程说明"><span data-icon="close" aria-hidden="true"></span></button></div>
+    <span class="tag green">Unity 2021 · 脚本编程与游戏开发</span>
+    <p>以《Unity 3D脚本编程与游戏开发》为教材，结合章节导学、视频学习、随堂笔记与场景实训。</p>
+    <dl class="book-details"><div><dt>作者</dt><dd>马遥、沈琰</dd></div><div><dt>出版社</dt><dd>人民邮电出版社</dd></div><div><dt>ISBN</dt><dd>9787115558756</dd></div><div><dt>课程学时</dt><dd>载入中</dd></div></dl>
+    <p class="muted small">当前为课程页面原型。视频资源由课程提供方关联；学习记录保存在当前浏览器。</p>
+  </dialog>
+
+  <script type="module" src="home.mjs"></script>
+  <script type="module" src="app-shell.mjs"></script>
+</body>
+</html>

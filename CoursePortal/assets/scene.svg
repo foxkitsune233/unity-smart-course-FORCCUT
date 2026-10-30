@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="440" viewBox="0 0 680 440" fill="none">
+<defs><pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#CEDDDC"/></pattern><linearGradient id="sphere" x1="363" y1="149" x2="418" y2="217" gradientUnits="userSpaceOnUse"><stop stop-color="#FFC887"/><stop offset="1" stop-color="#EA8E3B"/></linearGradient></defs>
+<rect width="680" height="440" fill="#EAF3F1"/><rect width="680" height="440" fill="url(#dots)"/>
+<path d="M97 299 332 167 587 306 350 437Z" fill="#D8E9E5"/><path d="M97 299 350 437 350 421 97 284Z" fill="#B6D3CC"/><path d="M350 437 587 306 587 291 350 421Z" fill="#A7C8BE"/>
+<g stroke="#B4CFC7" stroke-width="1"><path d="m127 282 253 138M157 266l253 138M188 249l253 138M218 232l253 138M249 215l253 138M279 198l253 138M310 181l253 138M126 315l236-132M156 332l236-132M187 349l236-132M218 365l236-132M248 382l236-132M279 399l236-132M310 416l236-132"/></g>
+<ellipse cx="392" cy="303" rx="45" ry="18" fill="#7AA898" opacity=".2"/>
+<path d="m222 239 61-34 60 34-60 34Z" fill="#84B4A7"/><path d="m222 239 61 34v64l-61-34Z" fill="#4D8B79"/><path d="m283 273 60-34v64l-60 34Z" fill="#286C58"/>
+<circle cx="392" cy="184" r="39" fill="url(#sphere)"/><path d="M392 231v66" stroke="#D6A064" stroke-dasharray="4 6" stroke-width="2"/>
+<g stroke-linecap="round" stroke-width="3"><path d="M392 184v-72" stroke="#0E8875"/><path d="m385 123 7-12 7 12" stroke="#0E8875"/><path d="m392 184 66 34m-16-1 17 2-7-15" stroke="#CF7564"/><path d="m392 184-60 33m16-1-17 2 7-15" stroke="#5687C4"/></g>
+<g font-family="Consolas,monospace" font-size="12" fill="#4D7268"><text x="402" y="115">Y</text><text x="467" y="225">X</text><text x="316" y="228">Z</text></g>
+<rect x="70" y="64" width="172" height="103" rx="9" fill="#FFF" stroke="#C7DBD5"/>
+<circle cx="86" cy="81" r="3" fill="#D5E2DD"/><circle cx="97" cy="81" r="3" fill="#D5E2DD"/><circle cx="108" cy="81" r="3" fill="#D5E2DD"/>
+<text x="86" y="108" font-family="Consolas,monospace" font-size="11" fill="#59746A">void Update() {</text><text x="96" y="128" font-family="Consolas,monospace" font-size="11" fill="#087C67">transform.Translate(</text><text x="107" y="146" font-family="Consolas,monospace" font-size="11" fill="#59746A">Vector3.right); }</text>
+<path d="M242 116h46q18 0 18 18v33" stroke="#8BB6A7" stroke-dasharray="5 5"/>
+<rect x="468" y="101" width="120" height="52" rx="8" fill="white" stroke="#C7DBD5"/><rect x="481" y="114" width="25" height="25" rx="6" fill="#E4F2EA"/><path d="m489 120 11 6-11 7Z" fill="#0D8871"/><text x="514" y="130" font-family="Consolas,monospace" font-size="12" fill="#28584A">Play mode</text>
+<rect x="83" y="354" width="111" height="32" rx="16" fill="#FFF" stroke="#C7DBD5"/><circle cx="101" cy="370" r="4" fill="#118873"/><text x="113" y="374" font-family="Consolas,monospace" font-size="11" fill="#386153">GameObject</text>
+</svg>

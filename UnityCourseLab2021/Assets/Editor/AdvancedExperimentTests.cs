@@ -1,0 +1,42 @@
+using System;
+using System.Reflection;
+using UnityEngine;
+using UnityEngine.UI;
+using UnityCourseLab;
+public static class AdvancedExperimentTests {
+ static void Check(bool value,string message){if(!value)throw new Exception(message);}
+ public static void Run(){
+  foreach(var oldId in new[]{"lab01","lab02"}) {var old=new LabSession();old.LoadExperiment(oldId,"demo");var raw=JsonUtility.ToJson(old.ExportEdit());raw=System.Text.RegularExpressions.Regex.Replace(raw,"\x22(?:mass|friction|bounce|jumpForce|stopDistance|maxHealth|damage|heal|capacity|parent|space|layout)\x22:(?:\x22[^\x22]*\x22|[-0-9.]+),?","");raw=raw.Replace(",}","}");var restored=new LabSession();restored.Import(JsonUtility.FromJson<SceneDocument>(raw));Check(restored.Preflight().Count==0,"Legacy raw JSON failed "+oldId);restored.Start();restored.Stop();} var s=new LabSession();s.LoadExperiment("lab03","demo");var ball=s.Find("ball");ball.rigidbody=false;ball.settings.mass=99;ball.settings.bounce=-1;Check(s.Preflight().Count>=3,"Physics dependency/parameter errors must aggregate");
+  ball.rigidbody=true;ball.settings.mass=1;ball.settings.bounce=0;s.AttachScript(ball.id,"triggerProbe");Check(s.Preflight().Exists(x=>x.field=="scripts"),"Physics trigger conflict accepted");s.RemoveScript(ball.id,"triggerProbe");s.AttachScript(ball.id,"collectible");Check(s.Preflight().Exists(x=>x.field=="scripts"),"Physics collectible conflict accepted");ball.rigidbody=false;ball.settings.mass=99;ball.settings.bounce=-1; var draft=new LabSession();draft.Import(JsonUtility.FromJson<SceneDocument>(JsonUtility.ToJson(s.ExportEdit())));Check(draft.Preflight().Count>=3,"Invalid physics draft not preserved");
+  foreach(var kind in LabSession.Kinds){var a=new LabSession();var o=a.Add(kind);foreach(var script in new[]{"physicsMove","triggerProbe","coordinateMove","lookAtTarget","healthController","inventoryController"})a.AttachScript(o.id,script);Check(o.scripts.Count==6,"Advanced scripts must attach to any GameObject");}
+  s.LoadExperiment("lab04","demo");s.Find("frame").settings.parent="mover";Check(s.Preflight().Exists(x=>x.field=="parent"),"Cyclic parenting accepted");s.Find("frame").settings.parent="";s.Find("mover").settings.target="";Check(s.Preflight().Exists(x=>x.field=="target"),"Missing coordinate reference accepted");
+  s.LoadExperiment("lab04","demo");var original=JsonUtility.ToJson(s.ExportEdit());s.Start();s.Find("mover").position.x=77;s.Stop();Check(JsonUtility.ToJson(s.ExportEdit())==original,"Advanced Stop snapshot changed");
+  var host=new GameObject("Advanced runtime test");var canvasHost=new GameObject("UGUI test");
+  try {var runtime=host.AddComponent<LabRuntime>();var live=(LabSession)typeof(LabRuntime).GetField("session",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(runtime);live.LoadExperiment("lab05","demo");live.Start();
+   var health=live.Find("health");var inventory=live.Find("inventory");
+   typeof(LabRuntime).GetField("healthValues",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(runtime).GetType().GetMethod("Add").Invoke(typeof(LabRuntime).GetField("healthValues",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(runtime),new object[]{"health",100});
+   var ui=canvasHost.AddComponent<LabCanvas>();ui.Initialize(runtime,health,inventory);Check(canvasHost.GetComponent<Canvas>()!=null&&canvasHost.GetComponent<GraphicRaycaster>()!=null,"Real UGUI Canvas missing");
+   var buttons=canvasHost.GetComponentsInChildren<Button>();Check(buttons.Length==4,"UGUI buttons missing");buttons[0].onClick.Invoke();Check(runtime.HealthFor("health")==80&&runtime.HealthChanges==1,"Single actual UGUI click must damage once");buttons[1].onClick.Invoke();Check(runtime.HealthFor("health")==90,"Actual Heal button failed");
+   for(int j=0;j<7;j++)buttons[2].onClick.Invoke();Check(runtime.InventoryFor("inventory")==4&&runtime.InventoryRejected==3,"Bounded inventory rejection failed");Check(runtime.Completed,"Measured UI completion failed");
+   for(int j=0;j<20;j++)buttons[0].onClick.Invoke();Check(runtime.HealthFor("health")==0,"Health lower clamp failed");for(int j=0;j<20;j++)buttons[1].onClick.Invoke();Check(runtime.HealthFor("health")==100,"Health upper clamp failed");
+   bool rejected=false;try{runtime.ApplyUIAction("health","arbitraryCode");}catch(ArgumentException){rejected=true;}Check(rejected,"UI action whitelist bypassed");
+  }finally{UnityEngine.Object.DestroyImmediate(canvasHost);UnityEngine.Object.DestroyImmediate(host);}
+    var physicsHost=new GameObject("Physics runtime test");var sphere=GameObject.CreatePrimitive(PrimitiveType.Sphere);var floor=GameObject.CreatePrimitive(PrimitiveType.Cube);
+  try {var runtime=physicsHost.AddComponent<LabRuntime>();var live=(LabSession)typeof(LabRuntime).GetField("session",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(runtime);live.LoadExperiment("lab03","demo");var definition=live.Find("ball");definition.settings.mass=2.5f;definition.settings.friction=.3f;definition.settings.bounce=.7f;live.Start();
+   floor.transform.position=new Vector3(0,-.5f,0);floor.transform.localScale=new Vector3(8,1,8);sphere.transform.position=new Vector3(0,.5f,0);var rb=sphere.AddComponent<Rigidbody>();var actor=sphere.AddComponent<AdvancedActor>();actor.Owner=runtime;actor.Definition=definition;actor.Begin();Physics.SyncTransforms();
+   Check(Mathf.Approximately(rb.mass,2.5f)&&Mathf.Approximately(sphere.GetComponent<Collider>().sharedMaterial.dynamicFriction,.3f)&&Mathf.Approximately(sphere.GetComponent<Collider>().sharedMaterial.bounciness,.7f),"Actual Rigidbody/material settings differ");
+   actor.SendMessage("FixedUpdate");Check(runtime.Grounded&&runtime.RayHits==1,"Actual 3D grounded raycast failed");
+   typeof(AdvancedActor).GetField("jumpRequested",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(actor,true);actor.SendMessage("FixedUpdate");Check(runtime.Jumps==1,"Grounded jump rejected");
+   rb.velocity=Vector3.up*2;typeof(AdvancedActor).GetField("jumpRequested",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(actor,true);actor.SendMessage("FixedUpdate");Check(runtime.Jumps==1&&runtime.RejectedJumps==1&&!runtime.Grounded,"Rising near ground allowed double jump");
+   rb.velocity=new Vector3(2,0,0);actor.SendMessage("FixedUpdate");Check(Mathf.Approximately(rb.velocity.x,2),"No-input frame erased physics coasting");
+  }finally{UnityEngine.Object.DestroyImmediate(sphere);UnityEngine.Object.DestroyImmediate(floor);UnityEngine.Object.DestroyImmediate(physicsHost);}  var vectorHost=new GameObject("Vector runtime test");var mover=new GameObject("Mover");var destination=new GameObject("Destination");var frame=new GameObject("Rotated parent");
+  try {var runtime=vectorHost.AddComponent<LabRuntime>();var live=(LabSession)typeof(LabRuntime).GetField("session",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(runtime);live.LoadExperiment("lab04","demo");live.Start();var dictionary=(System.Collections.Generic.Dictionary<string,GameObject>)typeof(LabRuntime).GetField("objects",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(runtime);dictionary.Add("destination",destination);destination.transform.position=new Vector3(10,0,0);var actor=mover.AddComponent<AdvancedActor>();actor.Owner=runtime;actor.Definition=live.Find("mover");frame.transform.rotation=Quaternion.Euler(0,90,0);mover.transform.SetParent(frame.transform,true);
+   actor.StepCoordinates(.1f,Vector3.right);Check(mover.transform.position.z<-.3f&&Mathf.Abs(mover.transform.position.x)<.01f,"Local movement ignored rotated parent");mover.transform.position=Vector3.zero;actor.Definition.settings.space="world";actor.StepCoordinates(.1f,Vector3.right);Check(mover.transform.position.x>.3f&&Mathf.Abs(mover.transform.position.z)<.01f,"World movement followed parent incorrectly");
+   mover.transform.position=Vector3.zero;for(int j=0;j<200;j++)actor.StepCoordinates(.02f,Vector3.zero);Check(runtime.Completed&&runtime.CoordinateArrived,"Distance arrival never completed");var stopped=mover.transform.position;for(int j=0;j<20;j++)actor.StepCoordinates(.02f,Vector3.zero);Check(mover.transform.position==stopped&&Mathf.Abs(Vector3.Distance(stopped,destination.transform.position)-actor.Definition.settings.stopDistance)<.002f,"Distance stopping oscillated or overshot");
+  }finally{UnityEngine.Object.DestroyImmediate(mover);UnityEngine.Object.DestroyImmediate(destination);UnityEngine.Object.DestroyImmediate(frame);UnityEngine.Object.DestroyImmediate(vectorHost);}Debug.Log("COURSE_LAB_ADVANCED_EXPERIMENT_TESTS_PASSED");
+ }
+}
+
+
+
+

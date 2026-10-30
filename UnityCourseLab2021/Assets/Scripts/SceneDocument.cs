@@ -1,0 +1,51 @@
+using System;
+using System.Collections.Generic;
+namespace UnityCourseLab {
+ [Serializable] public struct LabVector { public float x,y,z; public LabVector(float x,float y,float z){this.x=x;this.y=y;this.z=z;} }
+ [Serializable] public sealed class LabSettings {
+  public string storageSlot="progress",initialData="{\"schemaVersion\":1,\"playerName\":\"Student\",\"score\":0,\"level\":1}"; public string effectSource=""; public int burstCount=12; public float trailTime=1,volume=.3f; public float animationSpeed=1; public float mass=1,friction=.5f,bounce=0,jumpForce=5,stopDistance=.6f; public int maxHealth=100,damage=20,heal=10,capacity=4; public string parent="",space="local",layout="compact"; public float speed=4,interval=1,lifetime=4; public int maxAlive=10,requiredScore=3; public string scoreTarget="",projectile="",target="";
+  public LabSettings Copy(){return (LabSettings)MemberwiseClone();}
+ }
+ [Serializable] public sealed class LabObject { public string id,kind,behavior="none";public bool rigidbody;public List<string> scripts=new List<string>(); public LabSettings settings=new LabSettings(); public LabVector position,rotation,scale; }
+ [Serializable] public sealed class SceneDocument {public int schemaVersion=1,templateVersion=1;public string experimentId="sandbox";public List<LabObject> objects=new List<LabObject>();}
+ [Serializable] public sealed class LabIssue {public string id,script,field,message,code;public LabIssue(string id,string script,string field,string message){this.id=id;this.script=script;this.field=field;this.message=message;code="INVALID_"+field.ToUpperInvariant();}}
+ public sealed partial class LabSession {
+  public SceneDocument Current {get;private set;}=new SceneDocument();public bool Playing{get;private set;}private SceneDocument snapshot;
+  public static readonly string[] Kinds={"ground","sphere","player","coin","finish","score","emitter","projectile","target","physicsBody","triggerZone","parentFrame","vectorMover","healthPanel","inventoryPanel","animatedActor","feedbackSource"};
+  public static readonly string[] Scripts={"drop","launch","platform","spin","playerMove","collectible","scoreReceiver","finish","spawnEmitter","projectileMove","lifecycleProbe","targetHitReceiver","physicsMove","triggerProbe","coordinateMove","lookAtTarget","healthController","inventoryController","animatorController","feedbackController","effectSource","persistenceController","persistentState"};
+  void RequireEdit(){if(Playing)throw new InvalidOperationException("请先停止实验。");}
+  static bool Motion(string s){return s=="animatorController"||s=="physicsMove"||s=="coordinateMove"||s=="drop"||s=="launch"||s=="platform"||s=="playerMove"||s=="projectileMove";}
+  public LabObject Find(string id){var o=Current.objects.Find(x=>x.id==id);if(o==null)throw new ArgumentException("对象不存在："+id);return o;}
+  public LabObject Add(string kind){RequireEdit();if(Array.IndexOf(Kinds,kind)<0)throw new ArgumentException("Unknown object kind");if(Current.objects.Count>=40)throw new ArgumentException("最多40个对象");var o=new LabObject{id=Guid.NewGuid().ToString("N"),kind=kind,rigidbody=kind=="sphere"||kind=="player"||kind=="projectile",position=new LabVector(0,kind=="ground"?-.1f:kind=="sphere"?3:.5f,0),scale=kind=="ground"?new LabVector(10,.2f,10):new LabVector(1,1,1)};Current.objects.Add(o);return o;}
+  public LabObject AddAt(string k,LabVector p){ValidateVector(p,false);var o=Add(k);o.position=p;return o;}
+  public void AttachScript(string id,string script){RequireEdit();if(Array.IndexOf(Scripts,script)<0)throw new ArgumentException("Unknown preset script");var o=Find(id);if(o.scripts.Contains(script))throw new ArgumentException("脚本已经挂载");o.scripts.Add(script);if(script=="drop"||script=="launch"||script=="platform")o.behavior=script;}
+  public void RemoveScript(string id,string script){RequireEdit();var o=Find(id);o.scripts.Remove(script);if(o.behavior==script)o.behavior="none";}
+  public void SetBehavior(string id,string b){RequireEdit();if(b!="none"&&b!="drop"&&b!="launch"&&b!="platform")throw new ArgumentException("Unknown behavior");var o=Find(id);o.scripts.RemoveAll(x=>x=="drop"||x=="launch"||x=="platform");o.behavior="none";if(b!="none")AttachScript(id,b);}
+  public void SetPosition(string id,LabVector p){RequireEdit();ValidateVector(p,false);Find(id).position=p;}
+  public void SetRigidbody(string id,bool enabled){RequireEdit();Find(id).rigidbody=enabled;}
+  public void Configure(string id,LabSettings settings){RequireEdit();if(settings==null)throw new ArgumentException("参数不能为空");Find(id).settings=settings.Copy();}
+  public void Start(){RequireEdit();Validate(Current);var errors=Preflight();if(errors.Count>0)throw new ArgumentException("运行前检查发现 "+errors.Count+" 个错误，请定位并修正。");snapshot=Clone(Current);Playing=true;}
+  public void Stop(){if(!Playing)return;Current=Clone(snapshot);snapshot=null;Playing=false;}
+  public SceneDocument ExportEdit(){return Clone(Playing?snapshot:Current);}
+  public void Import(SceneDocument d){RequireEdit();Validate(d);Current=Clone(d);}
+  public List<LabIssue> Preflight(){var errors=new List<LabIssue>();if(Current.experimentId=="lab01"){RequireScript(errors,"playerMove");RequireScript(errors,"scoreReceiver");RequireScript(errors,"finish");var coins=Current.objects.FindAll(x=>x.scripts.Contains("collectible")).Count;if(coins<3||coins>8)errors.Add(new LabIssue("","collectible","scene","LAB01 需要 3–8 个挂有 Collectible 的对象。"));}if(Current.experimentId=="lab02"){RequireScript(errors,"spawnEmitter");RequireScript(errors,"projectileMove");RequireScript(errors,"targetHitReceiver");}foreach(var o in Current.objects){int motion=0;foreach(var s in o.scripts){var c=o.settings;if(Motion(s))motion++;
+   if((s=="playerMove"||s=="projectileMove"||s=="drop"||s=="launch")&&!o.rigidbody)errors.Add(new LabIssue(o.id,s,"rigidbody","需要 Rigidbody；在 Inspector 添加依赖组件。"));
+   if((s=="playerMove"||s=="projectileMove")&&(!Finite(c.speed)||c.speed<1||c.speed>8))errors.Add(new LabIssue(o.id,s,"speed","速度必须为 1–8。"));
+   if(s=="collectible"||s=="finish")Reference(errors,o,s,"scoreTarget",c.scoreTarget,"scoreReceiver");
+   if(s=="scoreReceiver"&&(c.requiredScore<3||c.requiredScore>8))errors.Add(new LabIssue(o.id,s,"requiredScore","目标金币数必须为 3–8。"));
+   if(s=="spawnEmitter"){Reference(errors,o,s,"projectile",c.projectile,"projectileMove");Reference(errors,o,s,"target",c.target,"targetHitReceiver");if(!Finite(c.interval)||c.interval<.5f||c.interval>3)errors.Add(new LabIssue(o.id,s,"interval","发射间隔必须为 0.5–3 秒。"));if(c.maxAlive<1||c.maxAlive>10)errors.Add(new LabIssue(o.id,s,"maxAlive","同时弹丸数必须为 1–10。"));}
+   if(s=="projectileMove"&&(!Finite(c.lifetime)||c.lifetime<.5f||c.lifetime>10))errors.Add(new LabIssue(o.id,s,"lifetime","弹丸寿命必须为 0.5–10 秒。"));
+  }if(motion>1)errors.Add(new LabIssue(o.id,"","scripts","存在互斥运动脚本，请移除冲突组件。"));}AdvancedPreflight(errors);FeedbackPreflight(errors);PersistencePreflight(errors);return errors;}
+  void RequireScript(List<LabIssue> e,string script){if(!Current.objects.Exists(x=>x.scripts.Contains(script)))e.Add(new LabIssue("",script,"scene","场景缺少 "+script+" 组件。"));}
+  void Reference(List<LabIssue> e,LabObject o,string s,string field,string id,string required){var target=Current.objects.Find(x=>x.id==id);if(target==null||!target.scripts.Contains(required))e.Add(new LabIssue(o.id,s,field,"请引用挂有 "+required+" 的对象。"));}
+  static bool Finite(float f){return !float.IsNaN(f)&&!float.IsInfinity(f);}
+  static void ValidateVector(LabVector v,bool scale){foreach(var f in new[]{v.x,v.y,v.z})if(!Finite(f)||Math.Abs(f)>1000||(scale&&(f<.1f||f>20)))throw new ArgumentException("Invalid transform value");}
+  static void Validate(SceneDocument d){if(d==null||d.schemaVersion!=1||d.objects==null||d.objects.Count>40)throw new ArgumentException("Invalid scene document");var ids=new HashSet<string>();foreach(var o in d.objects){if(o==null||string.IsNullOrEmpty(o.id)||!ids.Add(o.id)||Array.IndexOf(Kinds,o.kind)<0)throw new ArgumentException("Invalid scene object");if(o.scripts==null)o.scripts=new List<string>();if(o.scripts.Count==0&&o.behavior!="none"&&!string.IsNullOrEmpty(o.behavior))o.scripts.Add(o.behavior);if(o.settings==null)o.settings=new LabSettings();var unique=new HashSet<string>();foreach(var s in o.scripts)if(Array.IndexOf(Scripts,s)<0||!unique.Add(s))throw new ArgumentException("Unknown or duplicate script");ValidateVector(o.position,false);ValidateVector(o.rotation,false);ValidateVector(o.scale,true);}}
+  static SceneDocument Clone(SceneDocument d){var r=new SceneDocument{schemaVersion=d.schemaVersion,experimentId=d.experimentId,templateVersion=d.templateVersion};foreach(var o in d.objects)r.objects.Add(new LabObject{id=o.id,kind=o.kind,behavior=o.behavior,rigidbody=o.rigidbody,position=o.position,rotation=o.rotation,scale=o.scale,scripts=new List<string>(o.scripts),settings=o.settings.Copy()});return r;}
+  LabObject Preset(string kind,string id,float x,float z,params string[] scripts){var o=Add(kind);o.id=id;o.position=new LabVector(x,kind=="ground"?-.1f:.5f,z);foreach(var s in scripts)AttachScript(id,s);return o;}
+  public void LoadExperiment(string id,string mode){RequireEdit();if(id=="lab08"){LoadPersistence(mode);return;}if(id=="lab07"){LoadFeedback(mode);return;}if(id=="lab03"||id=="lab04"||id=="lab05"||id=="lab06"){LoadAdvanced(id,mode);return;}if(id!="lab01"&&id!="lab02")throw new ArgumentException("Unknown experiment");Current=new SceneDocument{experimentId=id};if(mode=="blank")return;Preset("ground","ground",0,0);if(id=="lab01"){Preset("player","player",-3,0,"playerMove");Preset("score","score",0,-4,"scoreReceiver");for(int i=0;i<3;i++){var c=Preset("coin","coin"+i,-1+i*2,0,"collectible","spin");c.scale=new LabVector(.5f,.5f,.5f);c.settings.scoreTarget="score";}Preset("finish","finish",4,0,"finish").settings.scoreTarget="score";}else{var p=Preset("projectile","projectile",-3,-3,"projectileMove","lifecycleProbe");p.scale=new LabVector(.3f,.3f,.3f);Preset("target","target",3,0,"targetHitReceiver").scale=new LabVector(.6f,2,2);var e=Preset("emitter","emitter",-3,0,"spawnEmitter","lifecycleProbe");e.settings.projectile="projectile";e.settings.target="target";if(mode=="practice")e.settings.projectile="";}if(mode=="practice"&&id=="lab01")Find("coin0").settings.scoreTarget="";}
+ }
+}
+
+
+

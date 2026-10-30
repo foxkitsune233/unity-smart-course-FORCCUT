@@ -1,0 +1,68 @@
+"""Video library acceptance via browser-harness, isolated8091 only."""
+from pathlib import Path
+exec(Path(r'D:\unity\CoursePortal\tests\b1_browser_acceptance.py').read_text(encoding='utf-8').split('\ntry:\n')[0])
+def click(name,role=None):
+    nodes=cdp('Accessibility.getFullAXTree')['nodes']
+    found=[n for n in nodes if not n.get('ignored') and n.get('name',{}).get('value')==name and (role is None or n.get('role',{}).get('value')==role)]
+    assert found,'AX element missing: '+name
+    node=found[0]['backendDOMNodeId'];cdp('DOM.scrollIntoViewIfNeeded',backendNodeId=node)
+    time.sleep(.2)
+    q=cdp('DOM.getBoxModel',backendNodeId=node)['model']['content']
+    click_at_xy(sum(q[0::2])/4,sum(q[1::2])/4);time.sleep(.25)
+manifest=json.loads(Path(r'D:\unity\outputs\Unity48学时-可播放视频清单.json').read_text(encoding='utf-8'))
+try:
+    visit(BASE+'watch.html?lesson=lesson-01','.resource-button');ev('localStorage.clear()')
+    cdp('Emulation.setDeviceMetricsOverride',width=1440,height=1000,deviceScaleFactor=1,mobile=False)
+    for lesson,resources in manifest['lessons'].items():
+        visit(BASE+'watch.html?lesson='+lesson,'.resource-button')
+        check(lesson+'_playlist_count',ev("document.querySelectorAll('.resource-button').length")==len(resources))
+        src=ev("document.querySelector('#external-video').src")
+        check(lesson+'_exact_part',('cid='+str(resources[0]['cid'])) in src and ('p='+str(resources[0]['page'])+'&') in src)
+    visit(BASE+'watch.html?lesson=lesson-01','.resource-button')
+    r=manifest['lessons']['lesson-01'][-1]
+    click('播放视频 9：'+r['title'],'button')
+    check('select_part_has_author_source_version',ev("document.querySelector('#video-resource-info').textContent.includes('siki学院')&&document.querySelector('.resource-original').href.includes('p=27')"))
+    cdp('Page.reload',ignoreCache=True);wait_for_load();until(lambda:ev("Boolean(document.querySelector('.resource-button.active'))"))
+    check('selected_part_survives_reload',ev("document.querySelector('.resource-button.active').dataset.resourceId")==r['id'])
+    ev("document.querySelector('#course-video').dispatchEvent(new Event('ended'))")
+    check('iframe_load_and_hidden_video_events_never_complete_lesson',not stored().get('lessons',{}).get('lesson-01',{}).get('completed',False))
+    check('external_does_not_fabricate_watch_time',stored().get('lessons',{}).get('lesson-01',{}).get('position',0)==0)
+    click('随堂笔记 0','tab');until(lambda:ev("!document.querySelector('#panel-notes').hidden"));type_into('笔记内容','视频选集笔记 <img src=x onerror=alert(1)>');click('保存笔记','button')
+    check('external_notes_are_plain_text_general_notes',ev("document.querySelector('.saved-note p').textContent.includes('<img')&&!document.querySelector('.saved-note img')&&document.querySelector('.note-time').textContent==='导学笔记'"))
+    click('标记本节已学','button');check('manual_self_report_operates',ev("document.querySelector('#catalog-completed').textContent==='1'"))
+    click('取消已学标记','button')
+    click('关联本节视频','button');until(lambda:ev("document.querySelector('#source-dialog').open"));type_into('视频地址','javascript:alert(1)');click('使用视频地址','button')
+    check('native_url_rejects_executable_scheme',ev("!document.querySelector('#source-error').hidden"))
+    type_into('视频地址',BASE+'assets/video-qa-clip.webm');click('使用视频地址','button')
+    until(lambda:ev("document.querySelector('#course-video').readyState>=2"),15)
+    check('native_override_hides_and_unloads_external',ev("document.querySelector('#external-video').hidden&&!document.querySelector('#external-video').hasAttribute('src')&&!document.querySelector('#course-video').hidden"))
+    ev("document.querySelector('#course-video').play()")
+    until(lambda:ev("document.querySelector('#course-video').currentTime>.6"));ev("document.querySelector('#course-video').pause()")
+    check('native_playback_position_still_persists',stored()['lessons']['lesson-01']['position']>.3)
+    check('native_range206_remains_available',ev("fetch('/assets/video-qa-clip.webm',{headers:{Range:'bytes=0-99'}}).then(async r=>r.status===206&&(await r.arrayBuffer()).byteLength===100)"))
+    cdp('Page.reload',ignoreCache=True);wait_for_load();until(lambda:ev("document.querySelector('#course-video')?.readyState>=2"))
+    check('native_default_remains_after_reload',ev("document.querySelector('#external-video').hidden&&!document.querySelector('#course-video').hidden"))
+    click('播放视频 9：'+r['title'],'button');cdp('Page.reload',ignoreCache=True);wait_for_load();until(lambda:ev("Boolean(document.querySelector('.resource-button.active'))"))
+    check('explicit_external_part_overrides_saved_native_after_reload',ev("!document.querySelector('#external-video').hidden&&document.querySelector('.resource-button.active').dataset.resourceId")==r['id'])
+    click('关联本节视频','button');click('移除本节视频关联','button')
+    check('remove_override_returns_to_collected_library',ev("!document.querySelector('#external-video').hidden&&document.querySelector('#course-video').hidden"))
+    check('notes_survive_native_external_switch',len(stored()['lessons']['lesson-01']['notes'])==1)
+    cdp('Emulation.setDeviceMetricsOverride',width=390,height=844,deviceScaleFactor=1,mobile=True)
+    check('playlist_mobile_no_horizontal_overflow',ev('document.documentElement.scrollWidth<=innerWidth'))
+    ev("window.scrollTo(0,0)");shot('videos-mobile.png')
+    cdp('Emulation.clearDeviceMetricsOverride')
+    login('teacher');until(lambda:ev("Boolean(document.querySelector('.manage-course-card'))"));editor()
+    check('teacher_lists_all_collected_resource_links',ev("document.querySelectorAll('.teacher-video-resources li').length") == manifest['summary']['resourceEntries'])
+    save();cdp('Page.reload',ignoreCache=True);wait_for_load();until(lambda:ev("Boolean(document.querySelector('#course-editor'))"))
+    detail=api_call('/api/manage/courses/'+COURSE)['data']
+    total=sum(len(l['video']['resources']) for ch in detail['course']['chapters']+detail['course']['curriculum']['optionalChapters'] for l in ch['lessons'])
+    check('teacher_save_retains88_parts',total==88)
+    cdp('Emulation.setDeviceMetricsOverride',width=390,height=844,deviceScaleFactor=1,mobile=True)
+    check('teacher_resources_mobile_no_overflow',ev('document.documentElement.scrollWidth<=innerWidth'))
+    cdp('Emulation.clearDeviceMetricsOverride')
+    visit(BASE,'.chapter-card')
+    check('home_all_chapters_mark_video_available',ev("[...document.querySelectorAll('.chapter-card-foot')].filter(n=>n.textContent.includes('已关联视频')).length===11"))
+    print('VIDEO LIBRARY ACCEPTANCE: '+str(len(results))+' passed',flush=True)
+finally:
+    EVIDENCE.joinpath('video-library-browser.json').write_text(json.dumps({'passed':len(results),'results':results},ensure_ascii=False,indent=2),encoding='utf-8')
+    cdp('Emulation.clearDeviceMetricsOverride')

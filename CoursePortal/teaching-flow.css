@@ -1,0 +1,172 @@
+/* 教学流程页专用组件：教学班标签页、权重条、量规表、名单预览、学情矩阵、批阅面板。 */
+
+.teaching-tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin:0 0 -1px}
+.teaching-tab{background:none;border:0;border-bottom:2px solid transparent;padding:11px 16px;font-size:13px;color:#65798a;cursor:pointer;font-weight:600}
+.teaching-tab:hover{color:var(--ink)}
+.teaching-tab.active{color:var(--green);border-bottom-color:var(--green)}
+
+/* 权重条：第二层权重（任务在总评中的占比）。合计不足时给出明确提示，不自动补齐。 */
+.weight-bar{display:flex;flex-direction:column;gap:7px;width:100%}
+.weight-bar-track{height:7px;border-radius:99px;background:#eef2f4;overflow:hidden}
+.weight-bar-track span{display:block;height:100%;border-radius:99px;background:var(--green);transition:width .25s ease}
+.weight-warn .weight-bar-track span{background:#c99a41}
+.weight-bar-text{font-size:11px;color:#6d8494;line-height:1.7}
+.weight-bar-text strong{color:var(--ink);font-variant-numeric:tabular-nums}
+.weight-warn .weight-bar-text{color:#8a6a2a}
+
+/* 量规编辑器 */
+.rubric-table td{vertical-align:middle}
+.rubric-title{min-width:220px}
+.rubric-hint{margin-top:12px;line-height:1.9}
+.task-rubric{margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}
+.task-rubric h3{font-size:14px;margin-bottom:13px}
+.task-rubric .text-button{margin-top:10px}
+
+/* 名单导入 */
+.roster-modal{max-width:640px}
+.roster-preview{margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+.roster-group{margin-bottom:16px}
+.roster-group h4{font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.roster-group ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px}
+.roster-group li{font-size:12px;color:#4a6172;background:#f7faf9;border:1px solid #e6ece9;border-radius:6px;padding:7px 11px}
+.roster-ok h4{color:#16735f}
+.roster-warn h4{color:#8a6a2a}
+.roster-bad h4{color:#a5574e}
+.roster-result .form-footer{margin-top:18px}
+
+/* 学情矩阵：每个任务一格，四种口径在标题里分列。 */
+.analytics-cells{display:flex;flex-wrap:wrap;gap:5px;max-width:280px}
+.caliber-cell{font-size:10px;padding:3px 7px;border-radius:4px;background:#f0f3f4;color:#8b9aa5;white-space:nowrap}
+.caliber-cell.partial{background:#fdf3df;color:#8a6a2a}
+.caliber-cell.done{background:#e1f3eb;color:#16735f}
+.archived-row{opacity:.55}
+
+/* 批阅面板 */
+.grade-modal{max-width:680px}
+.grade-meta{font-size:12px;color:#5d7385;margin-bottom:14px}
+.grade-evidence{background:#f4f9f7;border:1px solid #dcebe4;border-radius:9px;padding:12px 14px;margin-bottom:16px}
+.grade-evidence p{font-size:11px;color:#5b7a6e;margin-top:6px;line-height:1.8}
+.grade-release{flex-direction:row;align-items:center;gap:9px;margin:16px 0 4px;font-size:12px;color:#425d6c}
+.grade-release input{width:auto}
+.grade-history{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.grade-history ul{list-style:none;padding:0;margin:9px 0 0;display:flex;flex-direction:column;gap:6px}
+.grade-history li{font-size:11px;color:#6a7f8e;background:#f7fafb;border-radius:6px;padding:7px 11px}
+
+/* 表单里的多选与宽表 */
+.check-field{display:flex;flex-direction:row;align-items:center;gap:9px}
+.form-footer{display:flex;gap:10px;align-items:center;margin-top:22px}
+
+/* 学生端任务与成绩 */
+.task-card p{min-height:40px}
+.submit-rubric{margin-bottom:18px}
+.submit-rubric-inner{background:#f4f9f7;border:1px solid #dcebe4;border-radius:9px;padding:14px 16px}
+.submit-rubric-inner ul{list-style:none;padding:0;margin:9px 0 0;display:flex;flex-direction:column;gap:7px}
+.submit-rubric-inner li{display:flex;justify-content:space-between;gap:15px;font-size:12px;color:#4a6172;background:#fff;border:1px solid #e4ece8;border-radius:6px;padding:8px 11px}
+.submit-rubric-inner li span{color:#7d9099;font-size:11px;white-space:nowrap}
+.rubric-scores{display:flex;flex-wrap:wrap;gap:5px}
+.rubric-chip{font-size:10px;padding:3px 7px;border-radius:4px;background:#eef4f5;color:#637f8c}
+.rubric-chip strong{color:#174d46;font-variant-numeric:tabular-nums}
+.feedback-text{font-size:11px;color:#5d7385;margin-top:7px;line-height:1.8;max-width:420px}
+
+/* 图表：原生 SVG，无外部依赖（CSP script-src 'self' 禁止 CDN）。 */
+.cx-chart{margin-top:6px}
+.cx-chart svg{max-width:100%;height:auto;display:block}
+.cx-tick{font-size:10px;fill:var(--muted);font-family:inherit}
+.cx-value{font-size:10px;fill:var(--ink);font-variant-numeric:tabular-nums;font-family:inherit}
+.cx-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.cx-legend-item{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#5d7385}
+.cx-legend-item i{width:11px;height:11px;border-radius:3px;flex:none}
+.cx-legend-list{list-style:none;margin:0;padding:0;flex:1;min-width:180px;display:flex;flex-direction:column;gap:7px}
+.cx-legend-list li{display:flex;align-items:center;gap:8px;font-size:12px;color:#4a6172}
+.cx-legend-list i{width:10px;height:10px;border-radius:3px;flex:none}
+.cx-legend-list span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cx-legend-list strong{font-variant-numeric:tabular-nums;color:var(--ink)}
+.cx-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:26px;align-items:start}
+.cx-grid-3{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px}
+.cx-ring-wrap{display:flex;flex-wrap:wrap;gap:28px;align-items:center}
+.cx-ring{width:150px;height:150px;flex:none}
+.cx-ring-value{font-size:21px;font-weight:700;fill:var(--ink);font-family:inherit}
+.cx-ring-label{font-size:10px;fill:var(--muted);font-family:inherit}
+.cx-progress{display:flex;flex-direction:column;align-items:center;gap:6px}
+.cx-progress svg{width:132px;height:132px}
+.cx-progress-label{font-size:11px;color:#5d7385;margin:0;text-align:center}
+
+/* 图表细节升级：胶囊图例、加粗数值、名次、图例内嵌占比条。 */
+.cx-label{font-size:10.5px;fill:#42596a}
+.cx-strong{font-weight:700;font-size:10.5px}
+.cx-rank{font-size:10px;fill:#a8bcc7;font-variant-numeric:tabular-nums}
+.cx-pill{padding:5px 10px;border:1px solid var(--line);border-radius:99px;background:#fbfcfd}
+.cx-pill i{width:9px;height:9px;border-radius:50%}
+.cx-legend-track{display:block;flex:none;width:74px;height:5px;border-radius:99px;background:#eef2f4;overflow:hidden}
+.cx-legend-track em{display:block;height:100%;border-radius:99px}
+.cx-risk-wrap{display:flex;flex-wrap:wrap;gap:26px;align-items:center}
+.cx-risk-wrap .cx-ring{width:150px;height:150px}
+
+/* 目标达成矩阵：单元格颜色深浅即达成度，空值不填估算。 */
+.matrix-table{width:100%;border-collapse:separate;border-spacing:3px;font-size:12px}
+.matrix-table th,.matrix-table td{padding:8px 9px;text-align:center;border-radius:6px}
+.matrix-table thead th{background:#f5f8f9;color:#5b7281;font-size:11px;font-weight:600;white-space:nowrap}
+.matrix-table th.matrix-goal{text-align:left;min-width:180px;max-width:260px;background:#f5f8f9}
+.matrix-code{display:inline-block;font-size:10px;color:#4f6a7b;margin-right:6px}
+.matrix-desc{font-size:11px;color:#4a6172;font-weight:500}
+.matrix-cell{font-variant-numeric:tabular-nums}
+.matrix-cell strong{display:block;font-size:13px}
+.matrix-cell small{display:block;font-size:9px;opacity:.75}
+.matrix-empty{background:#fafbfc;color:#c3cfd6}
+.matrix-score{font-weight:700;color:var(--ink)}
+
+/* 质量报告：证据卡片。 */
+.evidence-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.evidence-card{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:linear-gradient(180deg,#fbfdfc,#fff)}
+.evidence-card span{display:block;font-size:11px;color:#6d8494}
+.evidence-card strong{display:block;font-size:24px;color:var(--ink);font-variant-numeric:tabular-nums;margin:4px 0 2px}
+.evidence-card p{margin:0;font-size:10.5px;color:#8b9aa5;line-height:1.7}
+
+/* 实验模板卡片 */
+.lab-template-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.lab-template-card{border:1px solid var(--line);border-radius:11px;padding:16px 18px;background:#fff;display:flex;flex-direction:column;gap:8px}
+.lab-template-card h3{font-size:14px;margin:0}
+.lab-check-list{list-style:none;margin:4px 0 10px;padding:0;display:flex;flex-direction:column;gap:5px}
+.lab-check-list li{display:flex;flex-direction:column;gap:2px;font-size:11px;color:#4a6172;background:#f7fafb;border-radius:6px;padding:6px 9px}
+.lab-check-list code{font-size:10px;color:#7d9099}
+.lab-check-list .optional{color:#8a6a2a}
+
+/* 撤回与复核标签 */
+.warn-tag{background:#fdf3df;color:#8a6a2a;border-color:#f0dfbc}
+
+/* 任务—目标关联 */
+.task-outcomes{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.task-outcomes h3{font-size:14px;margin:0 0 6px}
+.outcome-links{display:flex;flex-direction:column;gap:6px;margin-top:10px;max-height:220px;overflow:auto}
+.outcome-link{display:flex;align-items:center;gap:9px;font-size:12px;color:#425d6c;background:#f7fafb;border:1px solid #e9eff2;border-radius:7px;padding:7px 10px;cursor:pointer}
+.outcome-link:hover{background:#f2f8f6;border-color:#d7e6e1}
+.outcome-link input[type="checkbox"]{width:auto;flex:none}
+.outcome-code{font-size:10px;color:#4f6a7b;background:#eef4f5;border-radius:4px;padding:2px 6px;flex:none}
+.outcome-text{flex:1;line-height:1.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.outcome-weight{width:66px!important;flex:none;text-align:center}
+
+@media(max-width:760px){
+ .teaching-tabs{overflow-x:auto}
+ .teaching-tab{padding:9px 12px;font-size:12px;white-space:nowrap}
+ .rubric-title{min-width:150px}
+ .analytics-cells{max-width:none}
+ .submit-rubric-inner li{flex-direction:column;gap:3px}
+ .cx-grid{grid-template-columns:1fr}
+ .cx-ring-wrap{gap:18px}
+ .matrix-table th.matrix-goal{min-width:130px}
+}
+
+/* 提交回放：检测结果、场景快照与版本差异 */
+.replay-section{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.replay-section:first-of-type{margin-top:6px;border-top:0;padding-top:0}
+.replay-section h3{font-size:13px;margin:0 0 8px}
+.replay-checks{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:5px}
+.replay-checks li{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;color:#4a6172;background:#f7fafb;border-radius:6px;padding:7px 10px}
+.replay-checks li small{display:block;color:#8b9aa5;font-size:10px;margin-top:2px}
+.replay-checks li.ok{background:#f2f9f6;color:#16735f}
+.replay-checks li.optional{color:#8a6a2a}
+.replay-checks .tick{flex:none;width:15px;height:15px;border-radius:50%;display:grid;place-items:center;font-size:9px;background:#e2e9ec;color:#7d9099}
+.replay-checks li.ok .tick{background:#087f70;color:#fff}
+.replay-diff ul{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-wrap:wrap;gap:8px}
+.replay-diff li{font-size:11.5px;color:#4a6172;background:#f5f8f9;border:1px solid #e9eff2;border-radius:999px;padding:5px 12px}
+.replay-diff strong{color:var(--ink);font-variant-numeric:tabular-nums}

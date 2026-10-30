@@ -1,0 +1,27 @@
+// 教学域数据表：教学班、名单、任务、量规、提交、评分修订、学习事件、辅导记录。
+// 全部使用 IF NOT EXISTS，可重复执行；不修改既有 courses/users 表结构。
+export const teachingSchema = `
+CREATE TABLE IF NOT EXISTS terms(id TEXT PRIMARY KEY,name TEXT NOT NULL,start_date TEXT,end_date TEXT,created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS classes(id TEXT PRIMARY KEY,course_id TEXT NOT NULL REFERENCES courses(id),term_id TEXT REFERENCES terms(id),name TEXT NOT NULL,teacher_id TEXT REFERENCES users(id),published_revision INTEGER,status TEXT NOT NULL DEFAULT 'active',created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS class_members(class_id TEXT NOT NULL REFERENCES classes(id),student_id TEXT NOT NULL REFERENCES users(id),student_no TEXT NOT NULL,display_name TEXT NOT NULL,group_name TEXT,source TEXT NOT NULL DEFAULT 'import',status TEXT NOT NULL DEFAULT 'active',created_at TEXT NOT NULL,PRIMARY KEY(class_id,student_id));
+CREATE TABLE IF NOT EXISTS class_staff(class_id TEXT NOT NULL REFERENCES classes(id),user_id TEXT NOT NULL REFERENCES users(id),role TEXT NOT NULL,PRIMARY KEY(class_id,user_id));
+CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY,class_id TEXT NOT NULL REFERENCES classes(id),course_id TEXT NOT NULL REFERENCES courses(id),course_revision INTEGER NOT NULL,title TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',type TEXT NOT NULL,lesson_id TEXT,lab_id TEXT,ideological_note TEXT NOT NULL DEFAULT '',rubric_json TEXT NOT NULL DEFAULT '[]',max_score REAL NOT NULL DEFAULT 100,weight REAL NOT NULL DEFAULT 0,opens_at TEXT,due_at TEXT,allow_late INTEGER NOT NULL DEFAULT 1,allow_resubmit INTEGER NOT NULL DEFAULT 1,max_attempts INTEGER NOT NULL DEFAULT 3,status TEXT NOT NULL DEFAULT 'draft',published_at TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS task_outcomes(task_id TEXT NOT NULL REFERENCES tasks(id),outcome_id TEXT NOT NULL,contribution REAL NOT NULL DEFAULT 0,PRIMARY KEY(task_id,outcome_id));
+CREATE TABLE IF NOT EXISTS submissions(id TEXT PRIMARY KEY,task_id TEXT NOT NULL REFERENCES tasks(id),student_id TEXT NOT NULL REFERENCES users(id),attempt INTEGER NOT NULL,idempotency_key TEXT NOT NULL,scene_json TEXT,note TEXT NOT NULL DEFAULT '',check_result TEXT,status TEXT NOT NULL,score REAL,rubric_scores_json TEXT,feedback TEXT NOT NULL DEFAULT '',submitted_at TEXT NOT NULL,graded_at TEXT,graded_by TEXT,released INTEGER NOT NULL DEFAULT 0,UNIQUE(task_id,student_id,attempt),UNIQUE(task_id,student_id,idempotency_key));
+CREATE TABLE IF NOT EXISTS submission_files(id TEXT PRIMARY KEY,task_id TEXT NOT NULL REFERENCES tasks(id),student_id TEXT NOT NULL REFERENCES users(id),submission_id TEXT REFERENCES submissions(id),original_name TEXT NOT NULL,stored_name TEXT NOT NULL,content_type TEXT NOT NULL DEFAULT 'application/octet-stream',bytes INTEGER NOT NULL,created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS score_revisions(id INTEGER PRIMARY KEY AUTOINCREMENT,submission_id TEXT NOT NULL REFERENCES submissions(id),before_score REAL,after_score REAL,before_json TEXT,after_json TEXT,reason TEXT NOT NULL DEFAULT '',actor TEXT NOT NULL,at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS learning_events(event_id TEXT PRIMARY KEY,idempotency_key TEXT NOT NULL,actor_id TEXT NOT NULL,class_id TEXT,task_id TEXT,verb TEXT NOT NULL,object_type TEXT NOT NULL,object_id TEXT NOT NULL,course_version_id TEXT NOT NULL,offering_id TEXT NOT NULL,occurred_at TEXT NOT NULL,source TEXT NOT NULL,payload_json TEXT NOT NULL,received_at TEXT NOT NULL,UNIQUE(actor_id,idempotency_key));
+CREATE TABLE IF NOT EXISTS interventions(id TEXT PRIMARY KEY,class_id TEXT NOT NULL REFERENCES classes(id),student_id TEXT NOT NULL REFERENCES users(id),task_id TEXT REFERENCES tasks(id),kind TEXT NOT NULL,note TEXT NOT NULL DEFAULT '',actor TEXT NOT NULL,at TEXT NOT NULL,closed_at TEXT);
+CREATE TABLE IF NOT EXISTS learning_records(user_id TEXT NOT NULL REFERENCES users(id),course_id TEXT NOT NULL,state_json TEXT NOT NULL,updated_at TEXT NOT NULL,PRIMARY KEY(user_id,course_id));
+CREATE TABLE IF NOT EXISTS grade_appeals(id TEXT PRIMARY KEY,submission_id TEXT NOT NULL REFERENCES submissions(id),class_id TEXT NOT NULL REFERENCES classes(id),task_id TEXT NOT NULL REFERENCES tasks(id),student_id TEXT NOT NULL REFERENCES users(id),reason TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open',decision TEXT,decision_note TEXT NOT NULL DEFAULT '',before_score REAL,after_score REAL,created_at TEXT NOT NULL,resolved_at TEXT,resolved_by TEXT);
+CREATE TABLE IF NOT EXISTS lab_templates(lab_id TEXT PRIMARY KEY,version INTEGER NOT NULL DEFAULT 1,title TEXT NOT NULL DEFAULT '',scene_json TEXT NOT NULL DEFAULT '{}',scripts_json TEXT NOT NULL DEFAULT '[]',checks_json TEXT NOT NULL DEFAULT '[]',hints_json TEXT NOT NULL DEFAULT '[]',updated_by TEXT,updated_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_class_members_student ON class_members(student_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_class ON tasks(class_id);
+CREATE INDEX IF NOT EXISTS idx_submissions_task ON submissions(task_id);
+CREATE INDEX IF NOT EXISTS idx_submissions_student ON submissions(student_id);
+CREATE INDEX IF NOT EXISTS idx_submission_files_submission ON submission_files(submission_id);
+CREATE INDEX IF NOT EXISTS idx_events_class ON learning_events(class_id);
+CREATE INDEX IF NOT EXISTS idx_events_actor ON learning_events(actor_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_appeal_open ON grade_appeals(submission_id) WHERE status='open';
+CREATE INDEX IF NOT EXISTS idx_appeal_class ON grade_appeals(class_id);
+`;

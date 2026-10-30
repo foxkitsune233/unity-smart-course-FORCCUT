@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Unity 课程实验工作台：场景对象、预设脚本、参数配置与运行观察。">
+  <title>Unity 实验室 · 课程实验</title>
+  <link rel="stylesheet" href="lab.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">U<span>+</span></span>
+      <div><strong>Unity 课程实验室</strong><small>脚本编程与游戏开发</small></div>
+    </div>
+    <div class="top-actions">
+      <a href="/index.html" class="course-back">返回课程</a>
+      <label class="lab-picker"><span>当前实验</span><select id="lab-select" aria-label="选择实验"><option value="lab01">LAB01 · 场景与金币</option><option value="lab02">LAB02 · 组件与发射器</option><option value="lab03">LAB03 · 物理与落地</option><option value="lab04">LAB04 · 坐标与向量</option><option value="lab05">LAB05 · UGUI血条与背包</option><option value="lab08">LAB08 · PlayerPrefs与JSON存档</option><option value="lab07">LAB07 · 粒子拖尾音效</option><option value="lab06">LAB06 · 3D角色动画</option></select></label>
+      <span id="account-name" class="account-name"></span>
+      <span id="engine-version" class="version">Unity 2021</span>
+      <button id="save" class="save-button">保存实验 <span>Ctrl S</span></button>
+    </div>
+  </header>
+
+  <div class="editor-menubar" aria-label="编辑器菜单">
+    <nav aria-label="Unity 菜单"><span>File</span><span>Edit</span><span>Assets</span><span>GameObject</span><span>Component</span><span>Window</span><span>Help</span></nav>
+    <div class="editor-context"><span class="context-dot"></span>Course Lab<span class="context-separator">|</span><span>Layout</span><strong>Default</strong></div>
+  </div>
+
+  <div class="workspace">
+    <aside class="left-panel">
+      <details class="intro editor-window" open>
+        <summary><span class="window-disclosure">▾</span>实验任务 <span class="window-subtitle">Tasks</span></summary>
+        <div class="intro-body">
+          <span class="task-badge">GUIDED LAB</span>
+          <h1 id="task-title"></h1>
+          <p id="task-description"></p>
+          <div class="template-actions" role="group" aria-label="实验模板"><button data-template="demo">完整示例</button><button data-template="practice">补齐练习</button><button data-template="blank">空白搭建</button></div>
+          <p id="task-goals" class="task-goals"></p>
+        </div>
+      </details>
+
+      <section class="panel-section editor-window hierarchy-window">
+        <div class="section-heading window-heading"><h2><span class="window-disclosure">▾</span>Hierarchy <span class="window-subtitle">层级</span></h2><span id="object-count" class="count-badge">0 个</span></div>
+        <div class="add-actions"><button id="add-ground">＋ 地面</button><button id="add-sphere">＋ 小球</button></div>
+        <div class="hierarchy-path"><span>CourseScene</span><small>Scene</small></div>
+        <div id="hierarchy" role="list" aria-label="场景对象"><p class="empty">场景还是空的。<br>从 Project 拖入课程预制体。</p></div>
+      </section>
+
+      <section class="panel-section steps editor-window">
+        <div class="window-heading"><h2><span class="window-disclosure">▾</span>实验步骤 <span class="window-subtitle">Checklist</span></h2></div>
+        <ol><li id="step-create"><span>1</span>从 Project 拖入场景对象</li><li id="step-behavior"><span>2</span>挂载脚本并配置引用</li><li id="step-play"><span>3</span>运行并观察运动</li><li id="step-stop"><span>4</span>停止，恢复编辑状态</li><li id="step-save"><span>5</span>保存，刷新后继续实验</li></ol>
+      </section>
+      <p class="local-note">存档保存在当前浏览器。<br>可用于验证保存与重新打开流程。</p>
+    </aside>
+
+    <main class="center-panel">
+      <section class="scene-window editor-window">
+        <div class="window-tabs"><strong><span class="tab-icon">▧</span>Scene <span class="tab-cn">场景</span></strong><button disabled title="目前仅提供场景视图">Game 游戏 · 待支持</button><span class="window-spacer"></span><span class="window-layout">2D / 3D</span></div>
+        <div class="scene-toolbar">
+          <div class="scene-label"><span class="status-dot"></span><strong id="mode-label">编辑场景</strong></div>
+          <div class="transform-tools" aria-label="场景工具"><span class="active" title="移动工具">↔</span><span title="旋转工具（只读）">⟳</span><span title="缩放工具（只读）">⤢</span></div>
+          <span class="move-tool-badge">移动工具</span>
+          <div class="play-actions"><button id="play" class="primary">▶ <span>运行</span></button><button id="stop" disabled>■ <span>停止</span></button></div>
+          <button id="reset-camera" class="quiet">恢复视角</button>
+        </div>
+        <div id="viewport">
+          <canvas id="unity-canvas" tabindex="0" aria-label="Unity 三维实验场景"></canvas>
+          <div id="loading" role="status"><span class="loader-symbol">U+</span><h2>正在准备实验环境</h2><p id="loading-message">加载 Unity 2021 引擎与实验资源…</p><progress id="load-progress" max="1" value="0"></progress></div>
+          <div class="viewport-caption">左键拖动物体沿水平面移动 · 拖动彩色轴柄沿单轴移动<br>右键旋转视角 · 滚轮缩放 · Esc 取消拖动</div>
+          <div class="axis-legend" aria-hidden="true"><span class="axis-x">X</span><span class="axis-y">Y</span><span class="axis-z">Z</span></div>
+          <div class="scene-view-label" aria-hidden="true">Perspective<br><span>Shaded</span></div>
+        </div>
+        <div id="lab-metrics" class="lab-metrics"></div>
+        <div class="telemetry"><div><small>运行时间</small><strong id="elapsed">0.00 <em>s</em></strong></div><div><small>选中对象高度</small><strong id="height">— <em>m</em></strong></div><div><small>接触事件</small><strong id="contacts">0 <em>次</em></strong></div><p id="observation">配置脚本参数与引用后，点击运行。</p></div>
+      </section>
+
+      <section class="asset-browser editor-window" aria-label="项目资源">
+        <div class="section-heading window-heading"><h2><span class="tab-icon">▤</span>Project <span class="window-subtitle">项目资源</span></h2><span class="panel-hint">拖物品到场景 · 拖脚本到物体</span></div>
+        <div class="project-path"><span>Assets</span><b>›</b><strong>CourseLab</strong><small>只读课程资源</small></div>
+        <div class="asset-groups">
+          <div class="asset-group"><h3>预制体 <span>Prefabs</span></h3><div class="asset-cards">
+            <button id="asset-ground" class="asset-card prefab-card" draggable="true" data-asset-type="prefab" data-asset-id="ground"><span class="asset-symbol">▱</span><strong>地板</strong><small>Ground.prefab</small></button>
+            <button id="asset-sphere" class="asset-card prefab-card" draggable="true" data-asset-type="prefab" data-asset-id="sphere"><span class="asset-symbol sphere-symbol">●</span><strong>小球</strong><small>Sphere.prefab</small></button>
+          </div></div>
+          <div class="asset-group script-group"><h3>预设脚本 <span>Scripts · Read only</span></h3><div class="asset-cards">
+            <button id="script-drop" class="asset-card script-card" draggable="true" data-asset-type="script" data-asset-id="drop"><span class="asset-symbol">C#</span><strong>重力下落</strong><small>需要 Rigidbody</small></button>
+            <button id="script-launch" class="asset-card script-card" draggable="true" data-asset-type="script" data-asset-id="launch"><span class="asset-symbol">C#</span><strong>水平抛出</strong><small>需要 Rigidbody</small></button>
+            <button id="script-platform" class="asset-card script-card" draggable="true" data-asset-type="script" data-asset-id="platform"><span class="asset-symbol">C#</span><strong>平台往复移动</strong><small>需要 Rigidbody</small></button>
+            <button id="script-spin" class="asset-card script-card" draggable="true" data-asset-type="script" data-asset-id="spin"><span class="asset-symbol">C#</span><strong>自转</strong><small>任意对象</small></button>
+          </div></div>
+        </div>
+      </section>
+
+      <section class="console editor-window">
+        <div class="section-heading window-heading"><h2><span class="tab-icon">≡</span>Console <span class="window-subtitle">控制台</span></h2><div class="console-actions"><button type="button" disabled>Clear</button><span id="save-status">尚未保存</span></div></div>
+        <div id="log" role="log" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <aside class="right-panel">
+      <div class="inspector-heading window-heading"><div><span class="eyebrow">SELECTED OBJECT</span><h2 id="selected-name">尚未选择对象</h2><small id="selected-type">在场景或对象列表中选择</small></div><span class="inspector-icon" aria-hidden="true">ⓘ</span></div>
+
+      <section class="panel-section editor-window">
+        <h2 class="component-heading"><span class="window-disclosure">▾</span>Transform <span class="term">位置</span></h2>
+        <div class="component-subtitle">Position <span>位置</span></div>
+        <div class="position-fields"><label><span class="axis-x">X</span><input id="pos-x" type="number" step="any" min="-100" max="100" disabled></label><label><span class="axis-y">Y</span><input id="pos-y" type="number" step="any" min="-100" max="100" disabled></label><label><span class="axis-z">Z</span><input id="pos-z" type="number" step="any" min="-100" max="100" disabled></label></div>
+        <div class="component-subtitle">Rotation <span>Euler · 度</span></div>
+        <div class="position-fields"><label><span class="axis-x">X</span><input id="rot-x" type="number" step="any" min="-360" max="360" disabled></label><label><span class="axis-y">Y</span><input id="rot-y" type="number" step="any" min="-360" max="360" disabled></label><label><span class="axis-z">Z</span><input id="rot-z" type="number" step="any" min="-360" max="360" disabled></label></div>
+        <p class="help">拖动物体或彩色轴柄，位置会实时更新；也可输入精确数值。运行中暂停编辑。</p>
+      </section>
+
+      <section id="script-dropzone" class="panel-section component-dropzone editor-window" aria-label="脚本挂载区域">
+        <h2 class="component-heading"><span class="window-disclosure">▾</span>Components <span class="term">脚本组件</span></h2>
+        <div id="attached-scripts"><p class="help">把项目资源中的脚本拖入此处。</p></div>
+        <p class="help">也可以把脚本拖到场景中的物体，或左侧对应的层级条目。</p>
+        <label class="quick-label" for="behavior">Add Component <span>添加组件</span></label>
+        <select id="behavior" aria-label="选择预设行为" disabled><option value="none">静止 · 不添加运动行为</option><option value="drop">重力下落 · DropBehavior</option><option value="launch">水平抛出 · LaunchBehavior</option><option value="platform">平台往复移动 · PlatformMoveBehavior</option></select>
+        <p id="behavior-description" class="help">选择物体后，可以拖入适用的脚本。</p>
+        <div class="component-tag" id="component-tag">没有运动组件</div>
+      </section>
+
+      <section class="panel-section editor-window parameter-section">
+        <h2 class="component-heading"><span class="window-disclosure">▾</span>Parameters <span class="term">组件参数与引用</span></h2>
+        <label class="field rigidbody-field"><span>Rigidbody <small>刚体</small></span><input id="rigidbody" type="checkbox"></label>
+        <div id="settings-fields"></div>
+        <div id="persistence-controls" hidden><p>PlayerPrefs 进度存档</p><button id="persistence-addScore">分数 +1</button><button id="persistence-save">保存进度</button><button id="persistence-load">读取进度</button><button id="persistence-clear">清除进度</button><pre id="persistence-json"></pre><small>清除只删除当前存档槽；当前运行状态保留。停止会恢复初始状态，已保存进度可重新读取。</small></div>
+        <div id="validation-status"></div>
+      </section>
+
+      <section class="panel-section source-section editor-window">
+        <div class="section-heading window-heading"><h2><span class="window-disclosure">▾</span>关键代码 <span class="term">C#</span></h2><span class="readonly">只读</span></div>
+        <pre id="source-code">// 选择对象和预设脚本。
+// 源码可阅读，不可修改。</pre>
+        <p class="help">查看课程预设的实际关键代码；通过 Inspector 配置参数与引用。</p>
+      </section>
+
+      <section class="question-card"><span>想一想 / QUESTION</span><p>如果没有地面，小球会停在哪里？</p><small>尝试只创建小球，运行后观察高度。</small></section>
+    </aside>
+  </div>
+
+  <footer class="editor-statusbar"><span><i></i>Unity WebGL</span><span>Course Lab · 2021 LTS</span><span>Scene 自动恢复 · 手动保存</span></footer>
+
+  <script src="asset-drag.js"></script>
+  <script src="lab.js"></script>
+</body>
+</html>

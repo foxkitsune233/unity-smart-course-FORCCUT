@@ -1,0 +1,3 @@
+import {schoolCourse} from '../school-curriculum.mjs';
+// Upgrade only old built-in entries/placeholders; retain explicitly configured teacher URLs.
+export function attachLabExperiments(course){if(course?.id!==schoolCourse.id)return false;let changed=false;for(const ch of course.chapters||[])for(const lesson of ch.lessons||[]){if(!['lesson-01','lesson-02','lesson-03','lesson-04','lesson-05','lesson-06','lesson-10','lesson-12'].includes(lesson.id))continue;const p=lesson.practice;const replace=!p||(!p.available&&!p.url)||['/lab/','http://127.0.0.1:8088/'].includes(p.url);if(!replace)continue;lesson.practice=structuredClone(schoolCourse.chapters.flatMap(c=>c.lessons).find(l=>l.id===lesson.id).practice);changed=true;}return changed;}

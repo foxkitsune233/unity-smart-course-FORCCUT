@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Unity课程视频学习、章节导学与随堂笔记。">
+  <title>课程学习 · Unity研习室</title>
+  <link rel="stylesheet" href="portal.css">
+  <link rel="stylesheet" href="curriculum.css">
+  <link rel="stylesheet" href="video-playlist.css">
+  <link rel="stylesheet" href="app-shell.css">
+</head>
+<body class="watch-page">
+  <a class="skip-link" href="#lesson-content">跳到课程内容</a>
+
+  <header class="watch-topbar">
+    <a class="brand light-brand" href="./" aria-label="返回 Unity 研习室首页"><span class="brand-symbol" aria-hidden="true">U<span>·</span></span><span><strong>Unity 研习室</strong><small>LEARN · TEST · BUILD</small></span></a>
+    <div class="watch-course-name">Unity 3D 脚本编程与游戏开发<span class="tag green">Unity 2021</span></div>
+    <a class="back-home" href="./"><span data-icon="back" aria-hidden="true"></span>返回学习首页</a>
+  </header>
+
+  <main class="watch-content" id="lesson-content">
+    <div class="watch-heading">
+      <div>
+        <div class="breadcrumb"><a href="./#/directory">课程目录</a><span>/</span><span id="chapter-breadcrumb">第1章</span></div>
+        <span class="lesson-kicker">LESSON WORKSPACE</span>
+        <h1 id="lesson-title">课程学习</h1>
+      </div>
+      <span class="watch-mode">观看 · 导学 · 笔记 · 实训</span>
+    </div>
+
+    <div class="watch-grid">
+      <div class="watch-main">
+        <section class="video-shell" aria-label="课程视频播放器">
+          <div class="video-window-head"><span><i></i>课程视频</span><small>VIDEO PLAYER</small></div>
+          <div id="video-stage" class="video-stage">
+            <video id="course-video" controls playsinline preload="metadata" hidden></video>
+            <iframe id="external-video" class="external-video" title="课程视频 · B站官方播放器" allow="fullscreen; autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-presentation allow-popups" hidden></iframe>
+            <div id="video-empty" class="video-empty">
+              <img src="assets/scene.svg" alt="" aria-hidden="true">
+              <div class="video-empty-copy"><span class="play-outline" aria-hidden="true"><span data-icon="play"></span></span><span class="video-label">VIDEO LESSON</span><h2 id="video-empty-title">本节视频待接入</h2><p id="video-empty-description">视频资源关联后，即可在这里开始观看。<br>你也可以先阅读下方导学与关键知识点。</p></div>
+            </div>
+          </div>
+          <div class="player-toolbar">
+            <span id="source-status"><span class="small-dot"></span>等待视频资源</span>
+            <div class="player-tools">
+              <label class="speed-label"><span class="sr-only">播放速度</span><select id="playback-speed" aria-label="播放速度" disabled><option value="0.75">0.75×</option><option value="1" selected>1.0×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2.0×</option></select></label>
+              <button id="theater-mode" class="player-tool" aria-label="切换剧场模式" title="剧场模式" aria-pressed="false"><span data-icon="wide" aria-hidden="true"></span></button>
+              <button id="fullscreen" class="player-tool" aria-label="视频全屏" title="全屏"><span data-icon="full" aria-hidden="true"></span></button>
+            </div>
+          </div>
+        </section>
+
+        <section id="video-resource-panel" class="video-resource-panel" hidden aria-label="本节视频播放列表"><div class="video-resource-heading"><h2>本节视频</h2><span id="video-resource-count"></span></div><div id="video-resource-list" class="video-resource-list"></div></section>
+        <section id="video-resource-info" class="video-resource-info" hidden aria-label="视频来源"></section>
+
+        <div class="lesson-status-row"><span id="lesson-status" class="lesson-status">本节尚未标记已学</span><button id="complete-lesson" class="button secondary small-button"><span data-icon="check" aria-hidden="true"></span><span id="complete-label">标记本节已学</span></button></div>
+
+        <section class="lesson-detail">
+          <div class="lesson-tabs" role="tablist" aria-label="本节学习内容">
+            <button id="tab-guide" class="lesson-tab active" role="tab" aria-selected="true" aria-controls="panel-guide" data-tab="guide"><span>01</span>课程导学</button>
+            <button id="tab-notes" class="lesson-tab" role="tab" aria-selected="false" aria-controls="panel-notes" data-tab="notes"><span>02</span>随堂笔记 <b id="note-count">0</b></button>
+            <button id="tab-practice" class="lesson-tab" role="tab" aria-selected="false" aria-controls="panel-practice" data-tab="practice"><span>03</span>对应实训</button>
+          </div>
+
+          <div id="panel-guide" class="tab-panel" role="tabpanel" aria-labelledby="tab-guide">
+            <p id="lesson-summary" class="lesson-summary"></p>
+            <h2>本节你将掌握</h2>
+            <ul id="lesson-objectives" class="objective-list"></ul>
+            <div class="knowledge-box"><div><span data-icon="layers" aria-hidden="true"></span><h3>关键知识点</h3></div><div id="keypoints" class="knowledge-tags"></div></div>
+            <p class="guide-note">先用自己的话解释一个概念，再用实操验证它。观看和理解，可以留下不同的学习记录。</p>
+          </div>
+
+          <div id="panel-notes" class="tab-panel" role="tabpanel" aria-labelledby="tab-notes" hidden>
+            <div class="notes-panel-heading"><div><h2>记下这一次理解</h2><p>笔记按章节保存，播放时可带上当前时间点。</p></div><button id="export-notes" class="text-button"><span data-icon="download" aria-hidden="true"></span>导出笔记</button></div>
+            <form id="note-form" class="note-form"><label class="sr-only" for="note-text">笔记内容</label><textarea id="note-text" rows="4" maxlength="2000" placeholder="记下一个概念、一次观察，或准备在实操中验证的问题…"></textarea><div class="note-form-footer"><span id="note-timestamp">导学笔记</span><button id="save-note" class="button primary" type="submit" disabled><span data-icon="plus" aria-hidden="true"></span>保存笔记</button></div></form>
+            <div id="notes-list" class="notes-list" aria-live="polite"></div>
+          </div>
+
+          <div id="panel-practice" class="tab-panel" role="tabpanel" aria-labelledby="tab-practice" hidden>
+            <div class="lesson-practice-card"><span class="practice-icon" data-icon="cube" aria-hidden="true"></span><div><span class="eyebrow">FROM KNOWING TO DOING</span><h2 id="practice-title">对应实训</h2><p id="practice-description"></p><a id="practice-link" class="button primary" href="http://127.0.0.1:8088/" target="_blank" rel="noopener">进入实操实验 <span data-icon="external" aria-hidden="true"></span></a></div></div>
+          </div>
+        </section>
+
+        <nav class="lesson-pagination" aria-label="相邻章节">
+          <a id="previous-lesson" href="#"><span data-icon="back" aria-hidden="true"></span><span><small>上一节</small><strong id="previous-title">已是第一节</strong></span></a>
+          <a id="next-lesson" href="#"><span><small>下一节</small><strong id="next-title">下一节</strong></span><span data-icon="arrow" aria-hidden="true"></span></a>
+        </nav>
+      </div>
+
+      <aside class="lesson-catalog" aria-labelledby="catalog-title">
+        <div class="catalog-heading">
+          <div class="catalog-title-row"><span class="catalog-index">COURSE MAP</span><h2 id="catalog-title">课程目录</h2><span id="catalog-count">课程目录载入中</span></div>
+          <p><span id="catalog-completed">0</span> / <span id="catalog-total">—</span> 个单元已学</p>
+          <progress id="catalog-progress" max="1" value="0" aria-label="章节完成进度"></progress>
+          <label class="search-field catalog-search"><span data-icon="search" aria-hidden="true"></span><span class="sr-only">搜索课程目录</span><input id="catalog-search" type="search" placeholder="查找章节或知识点"></label>
+        </div>
+        <div id="catalog-list" class="catalog-list"></div>
+        <div class="catalog-footer"><span data-icon="info" aria-hidden="true"></span><p>每节视频独立关联，笔记与进度保存在当前浏览器。</p></div>
+      </aside>
+    </div>
+  </main>
+
+  <script type="module" src="watch.mjs"></script>
+  <script type="module" src="app-shell.mjs"></script>
+</body>
+</html>
