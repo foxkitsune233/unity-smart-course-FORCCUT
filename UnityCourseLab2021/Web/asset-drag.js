@@ -29,6 +29,8 @@ catalog.target={type:'prefab',name:'靶标'};
   });
   Object.assign(catalog,{feedbackSource:{type:'prefab',name:'反馈源'},feedbackController:{type:'script',name:'反馈控制器',className:'LabFeedbackActor'},effectSource:{type:'script',name:'效果源',className:'EffectSource'}});
   Object.assign(catalog,{persistenceController:{type:'script',name:'持久化控制器',className:'LabPersistenceActor'},persistentState:{type:'script',name:'可保存状态',className:'PersistentState'}});
+  catalog.enemyAI={type:'script',name:'敌人巡逻与追击',className:'LabEnemyAI'};
+  catalog.objectPool={type:'script',name:'对象池与事件',className:'LabPoolActor'};catalog.poolItem={type:'script',name:'池对象原型',className:'PoolItem'};
   const $=id=>document.getElementById(id);
   let state=null,ready=false,active=null,preview=null,previewObject=null;
   const message=(text,error=false)=>window.dispatchEvent(new CustomEvent('unity-lab-ui-message',{detail:{message:text,error}}));

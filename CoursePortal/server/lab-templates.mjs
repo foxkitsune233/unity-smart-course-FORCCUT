@@ -4,7 +4,7 @@
 // checks 采用声明式规则（field / op / value），由实验台在浏览器端求值，
 // 不在服务端执行任何脚本，避免把配置变成可执行代码。
 
-export const LAB_IDS=['lab01','lab02','lab03','lab04','lab05','lab06'];
+export const LAB_IDS=['lab01','lab02','lab03','lab04','lab05','lab06','lab07','lab08','lab09','lab10'];
 
 export const DEFAULT_LAB_TEMPLATES={
  lab01:{
@@ -76,6 +76,9 @@ export const DEFAULT_LAB_TEMPLATES={
  },
 };
 
+for(const [id,title,field,value] of [['lab07','粒子、拖尾与音效','feedbackBursts',3],['lab08','PlayerPrefs与JSON','persistenceLoads',1],['lab09','3D巡逻与追击','aiTransitions',2],['lab10','对象池与UnityEvent','poolReturned',3]])DEFAULT_LAB_TEMPLATES[id]={title,scene:{},scripts:[],checks:[{key:'runtime',label:'完成本章运行验证',field,op:'>=',value}],hints:['先运行完整示例，再修复补齐练习。','检测为客户端观测，最终成绩由教师按量规评定。']};
+// 与默认金币模板的三个金币保持一致。
+DEFAULT_LAB_TEMPLATES.lab01.checks.find(x=>x.key==='score').value=3;
 export function defaultTemplate(labId){
  const base=DEFAULT_LAB_TEMPLATES[labId];
  if(!base)return null;

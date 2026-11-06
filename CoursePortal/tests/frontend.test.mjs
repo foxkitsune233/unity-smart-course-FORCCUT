@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
+import {readFile} from 'node:fs/promises';
 
 const client = await import('../api-client.mjs').catch(()=>null);
 const editor = await import('../teacher.mjs').catch(()=>null);
@@ -52,4 +53,11 @@ test('course preparation does not mutate the source or invent confirmed hours',(
   draft.chapters[0].lessons[0].title='已修改';
   assert.equal(source.chapters[0].lessons[0].title,'课时一');
   assert.deepEqual(draft.outcomes,[]);
+});
+
+test('tasks page keeps the complete student navigation instead of dropping earlier study links',async()=>{
+  const [html,script]=await Promise.all([readFile(new URL('../tasks.html',import.meta.url),'utf8'),readFile(new URL('../tasks.mjs',import.meta.url),'utf8')]);
+  assert.match(html,/href="\.\/\#\/directory"/,'任务页应保留课程目录入口');
+  assert.match(html,/href="\.\/\#\/notes"/,'任务页应保留学习笔记入口');
+  assert.match(script,/tools-navigation\.mjs/,'任务页应加载课程学习与交流入口');
 });

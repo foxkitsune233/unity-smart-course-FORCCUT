@@ -71,6 +71,9 @@ public static class LabBuild
         AnimatorExperimentTests.Run();
         FeedbackExperimentTests.Run();
         PersistenceExperimentTests.Run();
+        CourseVisualTests.Run();
+        EnemyExperimentTests.Run();
+        PoolExperimentTests.Run();
         LabExperimentTests.Run();
         var evidence = new EngineEvidence { version = Application.unityVersion };
         var session = new LabSession(); session.Add("ground"); var item = session.Add("sphere");

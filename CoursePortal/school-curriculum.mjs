@@ -22,6 +22,10 @@ const lessonTitles={
  'lesson-01':'环境配置、3D移动小球与金币拾取','lesson-02':'从3D射击实例理解组件与脚本','lesson-03':'3D物理、碰撞与射线','lesson-04':'3D坐标、向量与旋转练习','lesson-05':'游戏界面、血条与背包','lesson-06':'3D角色动画状态机','lesson-07':'粒子、拖尾与DOTween动效','lesson-08':'音频管理器与音效反馈','lesson-10':'最高分存档与关卡解锁','lesson-11':'3D敌人巡逻与追击','lesson-13':'对象池与Unity事件','lesson-12':'WebGL/PC导出与开放大作业',
 };
 const builtInExperiments={
+ 'lesson-07':{available:true,url:'/lab/?lab=lab07',title:'实验07 · 粒子、拖尾与音效反馈'},
+ 'lesson-08':{available:true,url:'/lab/?lab=lab07',title:'实验07 · 音效与视觉反馈'},
+ 'lesson-11':{available:true,url:'/lab/?lab=lab09',title:'实验09 · 3D巡逻与追击'},
+ 'lesson-13':{available:true,url:'/lab/?lab=lab10',title:'实验10 · 对象池与UnityEvent'},
  'lesson-01':{available:true,url:'/lab/?lab=lab01',title:'实验01 · 3D场景搭建与金币拾取'},
  'lesson-02':{available:true,url:'/lab/?lab=lab02',title:'实验02 · 组件、预制体与3D发射器'},
  'lesson-03':{available:true,url:'/lab/?lab=lab03',title:'实验03 · 3D滚球、碰撞触发与落地检测'},

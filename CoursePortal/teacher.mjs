@@ -1,4 +1,5 @@
 import {videoSourceUrl,hasLessonVideo} from './video-resources.mjs';
+import './tools-navigation.mjs';
 import {curriculumHTML} from './curriculum-view.mjs';
 import {api,requireSession,bindAccount,escapeHTML as e,notice,errorMessage,formatDate,roles} from './api-client.mjs';
 

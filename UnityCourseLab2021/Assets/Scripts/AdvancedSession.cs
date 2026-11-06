@@ -7,6 +7,7 @@ namespace UnityCourseLab {
    if(Current.experimentId=="lab04"){RequireScript(e,"coordinateMove");RequireScript(e,"lookAtTarget");}
    if(Current.experimentId=="lab05"){RequireScript(e,"healthController");RequireScript(e,"inventoryController");}
    if(Current.experimentId=="lab06")RequireScript(e,"animatorController");
+   if(Current.experimentId=="lab09")RequireScript(e,"enemyAI");
    foreach(var single in new[]{"healthController","inventoryController"})if(Current.objects.FindAll(x=>x.scripts.Contains(single)).Count>1)e.Add(new LabIssue("",single,"scene","场景只允许一个 "+single+" 控制器。")); foreach(var o in Current.objects) {
     var c=o.settings;if(o.scripts.Contains("physicsMove")&&(o.scripts.Contains("triggerProbe")||o.scripts.Contains("collectible")||o.scripts.Contains("finish")))e.Add(new LabIssue(o.id,"physicsMove","scripts","刚体碰撞运动不能与把同一碰撞体改为触发器的脚本共用。"));
     if(!string.IsNullOrEmpty(c.parent)) {
@@ -15,6 +16,7 @@ namespace UnityCourseLab {
      if(o.rigidbody)e.Add(new LabIssue(o.id,"transform","parent","物理刚体不能挂在可变换父节点下。"));
     }
     foreach(var s in o.scripts) {
+     if(s=="enemyAI"){var target=Current.objects.Find(x=>x.id==c.target);if(target==null||target.id==o.id)e.Add(new LabIssue(o.id,s,"target","请选择其他目标对象。"));Range(e,o,s,"speed",c.speed,1,8);Range(e,o,s,"detectionRadius",c.detectionRadius,1,10);Range(e,o,s,"viewAngle",c.viewAngle,15,180);if(o.rigidbody)e.Add(new LabIssue(o.id,s,"rigidbody","敌人移动与刚体冲突，请移除 Rigidbody。"));}
      if(s=="physicsMove") {
       if(!o.rigidbody)e.Add(new LabIssue(o.id,s,"rigidbody","需要 Rigidbody。"));
       Range(e,o,s,"mass",c.mass,.5f,5);Range(e,o,s,"friction",c.friction,0,1);Range(e,o,s,"bounce",c.bounce,0,1);Range(e,o,s,"jumpForce",c.jumpForce,2,8);Range(e,o,s,"speed",c.speed,1,8);
@@ -48,7 +50,7 @@ namespace UnityCourseLab {
     var mover=Preset("vectorMover","mover",-2,0,"coordinateMove","lookAtTarget");mover.settings.parent="frame";mover.settings.target="destination";
     var target=Preset("target","destination",3,2);target.scale=new LabVector(.4f,.4f,.4f);
     if(mode=="practice")mover.settings.target="";
-   } else if(id=="lab06") { var actor=Preset("animatedActor","actor",0,0,"animatorController");if(mode=="practice")actor.settings.animationSpeed=0; } else {
+   } else if(id=="lab09") { var enemy=Preset("target","enemy",-3,0,"enemyAI");Preset("target","player",3,0);enemy.settings.target=mode=="practice"?"":"player"; } else if(id=="lab06") { var actor=Preset("animatedActor","actor",0,0,"animatorController");if(mode=="practice")actor.settings.animationSpeed=0; } else {
     Preset("healthPanel","health",-2,0,"healthController");var inv=Preset("inventoryPanel","inventory",2,0,"inventoryController");
     if(mode=="practice")inv.settings.capacity=0;
    }

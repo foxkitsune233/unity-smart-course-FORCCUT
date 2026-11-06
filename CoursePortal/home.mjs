@@ -1,4 +1,5 @@
 import {hasLessonVideo} from './video-resources.mjs';
+import './tools-navigation.mjs';
 import {curriculumHTML} from './curriculum-view.mjs';
 import {course,allLessons,requiredLessons,findLesson,loadState,icon,initCommon,timeLabel,storageKey,lessonLink,persist,syncRecords,recordSyncStatus,signedIn,toast} from './ui.mjs';
 import {lessonRecord,summarize,removeNote} from './learning-state.mjs';

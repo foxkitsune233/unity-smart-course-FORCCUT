@@ -2,11 +2,18 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const requestedLab=new URLSearchParams(location.search).get('lab');
-  const labId=['lab01','lab02','lab03','lab04','lab05','lab06','lab07','lab08'].includes(requestedLab)?requestedLab:'lab01';
+  const labId=['lab01','lab02','lab03','lab04','lab05','lab06','lab07','lab08','lab09','lab10'].includes(requestedLab)?requestedLab:'lab01';
   let storageKey='', identityReady=false;
-  $('lab-select').value=labId;$('lab-select').onchange=()=>location.assign('?lab='+$('lab-select').value);
+  const context=new URLSearchParams(location.search),taskId=context.get('task'),replayId=context.get('replay');
+  const newSubmissionKey=()=>globalThis.crypto?.randomUUID?.()||Date.now()+'-'+Math.random().toString(36).slice(2);
+  let taskContext=null,templateContext=null,lastObserved=null,submissionBusy=false,submissionKey=newSubmissionKey();
+  async function request(path,body){const auth=await(await fetch('/api/session',{credentials:'same-origin'})).json();const response=await fetch(path,{method:body?'POST':'GET',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':auth.csrfToken||''},body:body?JSON.stringify(body):undefined});const result=await response.json();if(!response.ok)throw Error(result.error?.message||'请求失败');return result;}
+  function checkRules(observed){const checks=(templateContext?.checks||[]).map(rule=>{const actual=rule.field.split('.').reduce((v,k)=>v==null?undefined:v[k],observed),expected=rule.value;let ok=false;if(actual!==undefined)switch(rule.op){case '>=':ok=Number(actual)>=Number(expected);break;case '<=':ok=Number(actual)<=Number(expected);break;case '>':ok=Number(actual)>Number(expected);break;case '<':ok=Number(actual)<Number(expected);break;case '===':ok=actual===expected;break;case '!==':ok=actual!==expected;break;}return {...rule,actual:actual??null,expected,ok};});return {clientObserved:true,templateVersion:templateContext?.version,passed:checks.some(x=>!x.optional)&&checks.filter(x=>!x.optional).every(x=>x.ok),checks};}
+  $('lab-select').add(new Option('LAB09 · 3D敌人 AI','lab09'));$('lab-select').add(new Option('LAB10 · 对象池与事件','lab10'));$('lab-select').value=labId;$('lab-select').onchange=()=>location.assign('?lab='+$('lab-select').value);
   const legacyInfo=labId==='lab01'?['CH01 · 场景搭建与金币拾取','WASD / 方向键移动角色，拾取金币，达到目标分数后进入终点。','任务：搭建地面、角色、金币、计分器与终点，绑定计分器引用。']:['CH02 · 组件与3D发射器','配置弹丸预制体与发射器，观察命中、存活数量与生命周期。','任务：绑定弹丸引用，调整间隔、速度、存活时间；观察 Start / Update / FixedUpdate。'];
   const courseInfo={
+    lab10:['CH10 · 对象池与UnityEvent','观察有限对象池循环发射与回收。','任务：绑定池原型，设置容量、寿命与间隔，观察复用超过创建数量。'],
+    lab09:['CH09 · 3D敌人巡逻与追击','运行后观察敌人检测目标并追击。','任务：绑定目标并调整速度，在编辑状态移动目标，对比检测范围内外的行为。'],
     lab03:['CH03 · 3D滚球、碰撞触发与落地检测','WASD / 方向键移动，空格跳跃。对比真实碰撞、触发与落地射线。','任务：搭建球体、地面与触发区；每次只改变质量、摩擦或弹性中的一个变量，验证空中不能连续跳跃。'],
     lab04:['CH04 · 3D坐标、向量移动与朝向目标','旋转父节点，对比局部 / 世界坐标下的运动方向、距离和朝向。','任务：绑定父节点和目标，选择坐标模式，观察世界与局部位置；到达停止距离后应停止。'],
     lab05:['CH05 · UGUI血条、交互与背包','运行后直接点击 Unity 场景中的 UGUI 按钮，观察血条与有限背包。','任务：挂载生命与背包脚本，配置容量和布局；验证一次点击一次事件、生命值边界以及背包已满反馈。'],
@@ -118,6 +125,8 @@ feedback.text = owner.InventoryRejected > 0
   }
   function command(action,extra={}) {
     if(!instance || !initialized) return;
+    if(replayId&&!['state','camera','play','stop','select'].includes(action))return;
+    if(['experiment','create','place','attach','attachAt','removeScript','configure','component','position','rotation','play'].includes(action))lastObserved=null;
     instance.SendMessage('LabBridge','Dispatch',JSON.stringify({action,scope:storageKey,...extra}));
   }
   function setEnabled() {
@@ -190,6 +199,8 @@ feedback.text = owner.InventoryRejected > 0
   function renderConfiguration(item) {
     const vector=value=>value?['x','y','z'].map(axis=>Number(value[axis]||0).toFixed(2)).join(', '):'—';
     const metricText={
+      lab10:'创建 '+(state.poolCreated||0)+' · 取用 '+(state.poolReused||0)+' · 回收 '+(state.poolReturned||0)+' · 事件 '+(state.poolEvents||0),
+      lab09:'观察敌人在目标附近追击，目标远离时返回巡逻。',
       lab01:'Score 分数 '+(state.score||0)+' · 终点 '+(state.completed?'已完成':'未到达'),
       lab02:'发射 '+(state.spawned||0)+' · 命中 '+(state.hits||0)+' · 存活 '+(state.alive||0)+' · Start '+(state.lifecycleStart||0)+' / Update '+(state.lifecycleUpdate||0)+' / FixedUpdate '+(state.lifecycleFixed||0),
       lab03:'落地 '+(state.grounded?'是':'否')+' · 碰撞 '+(state.physicsContacts||0)+' · 跳跃 '+(state.jumps||0)+' · 空中拒绝 '+(state.rejectedJumps||0)+' · 射线命中 '+(state.rayHits||0)+' · 触发 '+(state.triggers||0),
@@ -209,7 +220,7 @@ feedback.text = owner.InventoryRejected > 0
       host.dataset.shape=shape;host.replaceChildren();
       for(const [field,label] of Object.entries({storageSlot:'Storage Slot 存档槽',initialData:'Initial JSON 初始状态',speed:'Speed 速度',interval:'Interval 间隔 (s)',effectSource:'Effect Source 效果源引用',burstCount:'Burst Count 粒子数量',trailTime:'Trail Time 拖尾时长 (s)',volume:'Volume 音量',lifetime:'Lifetime 存活 (s)',maxAlive:'Max Alive 存活上限',requiredScore:'Required Score 目标分数',scoreTarget:'Score Receiver 计分器',projectile:'Projectile 弹丸原型引用',target:'Target 目标引用',mass:'Mass 质量',friction:'Friction 摩擦',bounce:'Bounce 弹性',jumpForce:'Jump Force 跳跃力',parent:'Parent 父节点',space:'Space 移动坐标',stopDistance:'Stop Distance 停止距离',maxHealth:'Max Health 最大生命',damage:'Damage 伤害',heal:'Heal 治疗',capacity:'Capacity 背包容量',layout:'Layout 布局'})) {
         const fieldsByScript={persistenceController:['storageSlot','target'],persistentState:['initialData'],feedbackController:['interval','effectSource','burstCount','trailTime','volume'],playerMove:['speed'],collectible:['scoreTarget'],finish:['scoreTarget'],scoreReceiver:['requiredScore'],spawnEmitter:['interval','maxAlive','projectile','target'],projectileMove:['speed','lifetime'],physicsMove:['speed','mass','friction','bounce','jumpForce'],coordinateMove:['speed','parent','target','space','stopDistance'],lookAtTarget:['target','speed','space','stopDistance'],healthController:['maxHealth','damage','heal','layout'],inventoryController:['capacity','layout']};
-        const fields=new Set((item?.scripts||[]).flatMap(script=>fieldsByScript[script]||[]));if(!fields.has(field))continue;
+        fieldsByScript.objectPool=['capacity','projectile','speed','interval','lifetime'];fieldsByScript.enemyAI=['speed','target'];const fields=new Set((item?.scripts||[]).flatMap(script=>fieldsByScript[script]||[]));if(!fields.has(field))continue;
         const row=document.createElement('label');row.className='field';const title=document.createElement('span');title.textContent=label;
         const reference=['scoreTarget','projectile','target','parent','effectSource'].includes(field),choices=({space:[['world','World 世界'],['local','Local 局部']],layout:[['compact','Compact 紧凑'],['wide','Wide 宽屏']]})[field],input=document.createElement(reference||choices?'select':'input');
         if(reference){input.add(new Option('None (未绑定)',''));for(const object of state.scene.objects)input.add(new Option(object.name||object.kind+' · '+object.id,object.id));}else if(choices){for(const [value,label] of choices)input.add(new Option(label,value));}else if(['storageSlot','initialData'].includes(field)){input.type='text';}else{input.type='number';input.step=['burstCount','capacity','maxHealth','damage','heal','maxAlive','requiredScore'].includes(field)?'1':'any';}
@@ -222,11 +233,19 @@ feedback.text = owner.InventoryRejected > 0
     $('persistence-controls').hidden=!(item?.scripts||[]).includes('persistenceController');
     for(const action of ['addScore','save','load','clear']){const button=$('persistence-'+action);button.disabled=state.mode!=='play'||!(item?.scripts||[]).includes('persistenceController');button.onclick=()=>command('persistenceAction',{id:item.id,behavior:action});}
     $('persistence-json').textContent=state.persistenceJson||'运行后显示当前 JSON；编辑参数不会自动覆盖存档。';
+    if(item?.scripts?.includes('enemyAI'))for(const [field,label,min,max] of [['detectionRadius','Detection Radius 检测半径',1,10],['viewAngle','View Angle 视野角度',15,180]]){let input=host.querySelector('[data-field="'+field+'"]');if(!input){const row=document.createElement('label');row.className='field';const title=document.createElement('span');title.textContent=label;input=document.createElement('input');input.type='number';input.dataset.field=field;input.min=min;input.max=max;input.step='1';input.onchange=()=>command('configure',{id:item.id,settings:{...state.scene.objects.find(o=>o.id===item.id)?.settings,[field]:Number(input.value)}});row.append(title,input);host.append(row);}input.disabled=state.mode!=='edit';if(document.activeElement!==input)input.value=item.settings[field];}
     const errors=state.errors||[],status=$('validation-status');status.replaceChildren();
     for(const error of errors){const row=document.createElement('button');row.className='validation-error';row.textContent=error.script+' · '+error.field+': '+error.message;row.onclick=()=>command('select',{id:error.id});status.append(row);}
     const signature=JSON.stringify(errors);if($('log').dataset.errors!==signature){$('log').dataset.errors=signature;for(const error of errors){log(error.id+' / '+error.script+' / '+error.field+': '+error.message,true);const row=$('log').lastChild;row.tabIndex=0;row.onclick=()=>command('select',{id:error.id});row.onkeydown=e=>{if(e.key==='Enter')row.click();};}}
   }
-  window.addEventListener('unity-lab-state',event=>render(event.detail));
+  window.addEventListener('unity-lab-state',event=>{render(event.detail);if(event.detail.mode==='play')lastObserved=JSON.parse(JSON.stringify(event.detail));const host=$('course-checks');if(host&&templateContext){host.replaceChildren();for(const rule of checkRules(lastObserved||event.detail).checks){const line=document.createElement('p');line.textContent=(rule.ok?'✓ ':'○ ')+rule.label+' · '+String(rule.actual);host.append(line);}}});
+  window.addEventListener('unity-lab-export',async event=>{if(!taskContext||submissionBusy)return;submissionBusy=true;const button=$('course-submit');if(button)button.disabled=true;try{await request('/api/teaching/tasks/'+encodeURIComponent(taskId)+'/submissions',{idempotencyKey:submissionKey,sceneJson:JSON.stringify(event.detail.scene),checkResult:checkRules(lastObserved||state),note:$('course-note')?.value||''});submissionKey=newSubmissionKey();log('实验已提交，等待教师批阅。');}catch(error){log(error.message,true);}finally{submissionBusy=false;if(button)button.disabled=false;}});
+  async function loadCourseContext(){try{
+    if(replayId){const detail=await request('/api/teaching/submissions/'+encodeURIComponent(replayId));const doc=JSON.parse(detail.submission.sceneJson);instance.SendMessage('LabBridge','LoadSaved',JSON.stringify(doc.scene||doc));$('unity-canvas').style.pointerEvents='none';log('正在回放提交的场景；编辑与保存已禁用。');return;}
+    templateContext=(await request('/api/teaching/labs/'+labId+'/template')).template;
+    const panel=document.createElement('section');panel.className='panel';const title=document.createElement('h3');title.textContent='课程检测与提示';panel.append(title);for(const hint of templateContext.hints||[]){const p=document.createElement('p');p.textContent=hint;panel.append(p);}const checks=document.createElement('div');checks.id='course-checks';panel.append(checks);$('task-goals').after(panel);
+    if(taskId){const tasks=await request('/api/teaching/student/tasks');taskContext=tasks.tasks.find(t=>t.id===taskId);if(!taskContext||taskContext.labId!==labId)throw Error('任务与实验不匹配或当前账号无权访问。');const label=document.createElement('p');label.textContent='提交任务：'+taskContext.title;const note=document.createElement('textarea');note.id='course-note';note.placeholder='实验思路、问题与验证结果';note.maxLength=5000;const button=document.createElement('button');button.id='course-submit';button.textContent='提交实验到任务';button.onclick=()=>{if(!submissionBusy&&commitPosition())command('export');};panel.append(label,note,button);}
+   }catch(error){taskContext=null;log(error.message,true);}}
   window.addEventListener('unity-lab-script-preview',event=>{
     const preset=behaviorText[event.detail];$('source-code').textContent=preset?preset[2]:'// '+event.detail+' (只读课程预设)\n// 使用 Inspector 配置参数及对象引用。';$('component-tag').textContent=event.detail;
   });
@@ -240,6 +259,7 @@ feedback.text = owner.InventoryRejected > 0
   function initialize() {
     if(!instance || !engineReady || !identityReady || initialized) return;
     initialized=true;$('loading').classList.add('hidden');setEnabled();
+    loadCourseContext();
     try {
       const saved=localStorage.getItem(storageKey);
       if(saved) instance.SendMessage('LabBridge','LoadSaved',saved); else command('experiment',{id:labId,kind:'demo'});

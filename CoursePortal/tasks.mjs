@@ -1,6 +1,7 @@
 // 学生端任务与成绩：我的任务、任务详情与提交、量规公开、成绩与反馈。
 // 提交带幂等键，重复点击不会产生多个版本；重做保留历史提交。
 import {api,requireSession,bindAccount,escapeHTML as e,notice,errorMessage,formatDate} from './api-client.mjs';
+import './tools-navigation.mjs';
 import {taskTypes,submissionStatusTag,appealTag} from './teaching-ui.mjs';
 import {initIcons} from './icons.mjs';
 import {progressRing} from './charts.mjs';
@@ -11,6 +12,8 @@ initIcons();
 const view=document.querySelector('#tasks-view');
 let session=null,routeSequence=0;
 let tasks=[],submissions=[],activeTask=null;
+let submissionBusy=false,submissionKey=null,uploadedFiles=[];
+const filesField=document.createElement('label');filesField.className='field';filesField.textContent='成果文件（最多5个，单个200MB，合计500MB）';const filesInput=document.createElement('input');filesInput.type='file';filesInput.multiple=true;filesInput.accept='.zip,.unitypackage,.doc,.docx,.pdf,.png,.jpg,.jpeg,.mp4,.txt,.json';filesField.append(filesInput);document.querySelector('#submit-form .form-footer').before(filesField);
 
 const heading=(eyebrow,title,description,action='')=>`<div class="page-heading teaching-heading"><div><span class="eyebrow">${eyebrow}</span><h1>${e(title)}</h1><p>${e(description)}</p></div>${action}</div>`;
 
@@ -78,6 +81,7 @@ function openSubmit(taskId){
  if(!activeTask)return;
  const form=document.querySelector('#submit-form');
  form.reset();
+ submissionKey=crypto.randomUUID();uploadedFiles=[];
  form.elements.taskId.value=activeTask.id;
  const mine=activeTask.mySubmissions||[];
  const latest=mine[mine.length-1];
@@ -91,6 +95,7 @@ function openSubmit(taskId){
 
 async function submitTask(event){
  event.preventDefault();
+ if(submissionBusy)return;
  const form=event.target;
  const host=document.querySelector('#submit-error');
  host.hidden=true;
@@ -100,14 +105,19 @@ async function submitTask(event){
   catch{host.hidden=false;host.textContent='场景数据不是合法 JSON，请检查格式或留空。';return;}
  }
  // 幂等键：同一份内容重复提交只会产生一个版本。
- const key=`${form.elements.taskId.value}:${Date.now()}:${Math.random().toString(36).slice(2,10)}`;
+ const selectedFiles=[...filesInput.files];if(selectedFiles.length>5||selectedFiles.some(f=>f.size>200*1024*1024)||selectedFiles.reduce((n,f)=>n+f.size,0)>500*1024*1024){host.hidden=false;host.textContent='最多5个文件，单个不超过200MB，合计不超过500MB。';return;}
+ const key=submissionKey||(submissionKey=crypto.randomUUID());
  const body={idempotencyKey:key,note:form.elements.note.value,sceneJson:sceneJson||null};
+ submissionBusy=true;const submitButton=form.querySelector('[type=submit]');submitButton.disabled=true;
  try{
+  const auth=await api.request('/api/session');
+  for(const file of selectedFiles){const signature=[file.name,file.size,file.lastModified].join(':');if(uploadedFiles.some(x=>x.signature===signature))continue;const response=await fetch(`/api/teaching/tasks/${encodeURIComponent(form.elements.taskId.value)}/files`,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(file.name),'X-CSRF-Token':auth.csrfToken},body:file});const payload=await response.json();if(!response.ok)throw Error(payload.error?.message||'上传失败');uploadedFiles.push({signature,id:payload.file.id});}
+  body.attachmentIds=uploadedFiles.filter(x=>selectedFiles.some(f=>[f.name,f.size,f.lastModified].join(':')===x.signature)).map(x=>x.id);
   await api.request(`/api/teaching/tasks/${encodeURIComponent(form.elements.taskId.value)}/submissions`,{method:'POST',body});
   document.querySelector('#submit-dialog').close();
   await renderRoute();
   notice('提交成功。等待老师批阅后即可看到成绩与评语。','success');
- }catch(error){host.hidden=false;host.textContent=errorMessage(error);}
+ }catch(error){host.hidden=false;host.textContent=errorMessage(error);}finally{submissionBusy=false;submitButton.disabled=false;}
 }
 
 async function action(event){

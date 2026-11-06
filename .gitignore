@@ -5,6 +5,7 @@
 Tuanjie Hub/
 CoursePortal/serve.log
 CoursePortal/.env*
+**/node_modules/
 **/local-accounts.txt
 **/*accounts*.csv
 CourseVideos/

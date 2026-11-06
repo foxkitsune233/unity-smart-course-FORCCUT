@@ -1,4 +1,5 @@
 // 教师端教学流程：教学班、名单、任务下发、量规批阅、班级学情、成绩导出。
+import './tools-navigation.mjs';
 // 权限沿用后端：教师看自己被授权的教学班；仅班负责人可导入名单与改分。
 import {api,requireSession,bindAccount,escapeHTML as e,notice,errorMessage,formatDate,roles} from './api-client.mjs';
 import {taskTypes,interventionKinds,rubricTable,readRubric,weightBar,taskStatusTag,submissionStatusTag,appealTag,appealStatusText,toLocalInput,toISO,downloadGrades,downloadReport} from './teaching-ui.mjs';
@@ -10,6 +11,7 @@ let currentClass=null;      // 当前教学班详情
 let gradingTask=null;       // 当前批阅的任务
 let rosterPreview=null;     // 名单导入预览结果
 let activeTab='roster';     // 教学班详情内的当前分页，切换视图后保持
+let reportQuery='';
 const classes=[];           // 教学班列表缓存
 
 const heading=(eyebrow,title,description,action='')=>`<div class="page-heading teaching-heading"><div><span class="eyebrow">${eyebrow}</span><h1>${e(title)}</h1><p>${e(description)}</p></div>${action}</div>`;
@@ -172,7 +174,7 @@ async function analyticsView(classId){
 
 // ===== 课程质量报告 =====
 async function reportView(classId){
- const report=await api.request(`/api/teaching/classes/${encodeURIComponent(classId)}/report`);
+ const report=await api.request(`/api/teaching/classes/${encodeURIComponent(classId)}/report${reportQuery}`);
  const score=report.score;
  let html=heading('QUALITY REPORT',`${report.className} · 课程质量报告`,`${report.courseTitle||''} · 生成于 ${formatDate(report.generatedAt)}`, `<div class="inline-actions"><button class="button secondary small-button" data-action="export-report" data-class="${e(classId)}">导出报告</button><a class="text-button" href="#class/${encodeURIComponent(classId)}">← 返回教学班</a></div>`);
  html+=`<section class="workspace-summary" aria-label="报告概览">
@@ -181,8 +183,10 @@ async function reportView(classId){
   <div><span>班级平均分</span><strong>${score.average==null?'—':score.average}</strong></div>
   <div><span>及格率</span><strong>${score.passRate==null?'—':score.passRate}<small> %</small></strong></div>
   <div class="workspace-summary-note"><span class="eyebrow">EVIDENCE BASED</span><p>目标达成按任务占比加权；未关联任务的目标显示为空，不填估算值。</p></div></section>`;
- html+=`<section class="panel"><div class="section-heading"><div><h2>课程目标达成</h2><p>${e(report.note)}</p></div></div>${outcomeMatrix(report.outcomes)}</section>`;
+ html+=`<section class="panel"><label>起始日期 <input type="date" id="report-from" value="${e(report.range?.from||'')}"></label> <label>结束日期 <input type="date" id="report-to" value="${e(report.range?.to||'')}"></label> <button class="button secondary small-button" data-action="report-range">应用范围</button> <button class="button secondary small-button" data-action="matrix-edit" data-class="${e(classId)}">编辑评分点矩阵</button><p class="small">矩阵版本 ${e(report.matrixVersion??0)} · 算法 ${e(report.algorithm||'任务级关联')}</p></section>`;
+ html+=`<section class="panel"><div class="section-heading"><div><h2>课程目标达成</h2><p>${e(report.note)}</p></div></div>${outcomeMatrix(report.outcomes)}${report.outcomes.map(o=>`<p class="small">${e(o.code)} · ${e(o.evidenceStatus||'任务级证据')} · 有效样本 ${e(o.sampleCount??'—')}</p>`).join('')}<details><summary>追溯评分点证据</summary><pre style="white-space:pre-wrap">${e(JSON.stringify(report.submissionEvidence||[],null,2))}</pre></details></section>`;
  html+=`<section class="panel"><div class="section-heading"><div><h2>成绩概览</h2><p>平均分 ${score.average??'—'} · 中位数 ${score.median??'—'} · 最高 ${score.max??'—'} · 最低 ${score.min??'—'} · 课程总评均值 ${score.courseAverage??'—'}</p></div></div>${riskChart(report.risks,report.totals.students)}</section>`;
+ html+=`<section class="panel"><div class="section-heading"><div><h2>测验纳入总评</h2><p>${e(report.quizSummary?.note||'本班暂无测验记录。')}</p></div></div><p class="small">已提交测验 ${e(report.quizSummary?.attempted||0)} 次 · 测验均分 ${report.quizSummary?.average??'—'}</p>${(report.combinedTotals||[]).length?`<div class="table-scroll"><table class="data-table"><thead><tr><th>学生</th><th>任务成绩</th><th>测验成绩</th><th>派生总评</th><th>任务/测验权重</th></tr></thead><tbody>${report.combinedTotals.map(x=>`<tr><td>${e(x.name)}</td><td>${x.taskScore??'—'}</td><td>${x.quizScore??'—'}</td><td><strong>${x.total??'—'}</strong></td><td>${e(x.taskWeight)}% / ${e(x.quizWeight)}%</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted small">尚无可计入总评的任务或测验成绩。</p>'}</section>`;
  html+=`<section class="panel"><div class="section-heading"><div><h2>过程证据材料</h2><p>报告中的每个数字都能回到具体记录，不做人工估算。</p></div></div><div class="evidence-grid">${report.evidence.map(item=>`<article class="evidence-card"><span>${e(item.label)}</span><strong>${item.count}</strong><p>${e(item.note)}</p></article>`).join('')}</div></section>`;
  html+=`<section class="panel"><div class="section-heading"><div><h2>教学改进记录</h2><p>预警之后的干预与结案，构成持续改进的证据链。</p></div></div>${report.improvements.length?`<div class="table-scroll"><table class="data-table"><thead><tr><th>学生</th><th>类型</th><th>说明</th><th>记录人</th><th>时间</th><th>状态</th></tr></thead><tbody>${report.improvements.map(item=>`<tr><td>${e(item.displayName)}</td><td><span class="role-badge">${e(interventionKinds[item.kind]||item.kind)}</span></td><td class="small">${e(item.note||'—')}</td><td class="small">${e(item.actor)}</td><td class="small">${e(formatDate(item.at))}</td><td>${item.closedAt?'<span class="tag green">已结案</span>':'<span class="tag draft-tag">跟进中</span>'}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted small">本周期没有辅导记录。</p>'}</section>`;
  html+=`<section class="panel"><div class="section-heading"><div><h2>需要关注的学生</h2><p>平均分低于 60 或已完成任务不足一半的学生，建议先留一条辅导记录再跟进。</p></div></div>${report.risks.length?`<div class="table-scroll"><table class="data-table"><thead><tr><th>学号</th><th>姓名</th><th>原因</th><th>平均分</th><th>已确认任务</th></tr></thead><tbody>${report.risks.map(r=>`<tr><td class="mono">${e(r.studentNo)}</td><td>${e(r.name)}</td><td class="small">${e(r.reason)}</td><td>${r.average==null?'—':e(r.average)}</td><td>${r.confirmed}/${r.tasksTotal}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted small">暂无风险学生。</p>'}</section>`;
@@ -278,6 +282,8 @@ async function action(event){
  if(kind==='withdraw-task'){await withdrawTask(button.dataset.task);return;}
  if(kind==='appeal-revise'){await resolveAppeal(button.dataset.appeal,'revise');return;}
  if(kind==='appeal-uphold'){await resolveAppeal(button.dataset.appeal,'uphold');return;}
+ if(kind==='report-range'){const from=document.querySelector('#report-from').value,to=document.querySelector('#report-to').value;reportQuery='?'+new URLSearchParams({...from?{from}:{},...to?{to}:{}});await renderRoute();return;}
+ if(kind==='matrix-edit'){await editPointMatrix(button.dataset.class);return;}
  if(kind==='export-report'){await exportReport(button.dataset.class);return;}
  if(kind==='edit-lab'){await openLabEditor(button.dataset.lab);return;}
  if(kind==='grade'){await openGrade(button.dataset.submission);return;}
@@ -488,8 +494,17 @@ async function exportReport(classId){
  const id=classId||currentClass?.class?.id;
  if(!id){notice('请先进入教学班。','error');return;}
  try{
-  await downloadReport(id,`${currentClass?.class?.name||'班级'}-质量报告.html`);
+  const response=await fetch(`/api/teaching/classes/${encodeURIComponent(id)}/report/export${reportQuery}`,{credentials:'same-origin'});if(!response.ok)throw Error('报告导出失败');const href=URL.createObjectURL(await response.blob()),link=document.createElement('a');link.href=href;link.download='课程质量报告.html';link.click();setTimeout(()=>URL.revokeObjectURL(href),1000);
   notice('质量报告已导出。','success');
+ }catch(error){notice(errorMessage(error),'error');}
+}
+
+async function editPointMatrix(classId){
+ try{const data=await api.request(`/api/teaching/classes/${encodeURIComponent(classId)}/outcome-matrix`),dialog=document.createElement('dialog');dialog.className='modal';
+ dialog.innerHTML=`<h2>目标—任务—评分点矩阵</h2><p>每行关联一个目标与任务量规评分点。贡献权重与课程总评占比分开。</p><form><label>最小有效学生样本 <input name="minSamples" type="number" min="1" max="1000" value="${data.matrix.minSamples}"></label><div id="matrix-rows"></div><button type="button" id="matrix-add">增加关联</button><p id="matrix-error" role="alert"></p><button type="submit">保存新版本</button> <button type="button" id="matrix-close">关闭</button></form>`;document.body.append(dialog);
+ const host=dialog.querySelector('#matrix-rows');
+ function row(link={}){const div=document.createElement('div');div.className='matrix-point-row';div.innerHTML=`<select data-field="outcomeId" aria-label="课程目标">${data.outcomes.map(o=>`<option value="${e(o.id)}">${e(o.code)} ${e(o.description)}</option>`).join('')}</select><select data-field="taskId" aria-label="教学任务">${data.tasks.map(t=>`<option value="${e(t.id)}">${e(t.title)}</option>`).join('')}</select><select data-field="rubricId" aria-label="量规评分点"></select><input data-field="weight" aria-label="贡献权重" type="number" min="0.01" max="100" step="any" value="${link.weight||1}"><button type="button">移除</button>`;host.append(div);const task=div.querySelector('[data-field=taskId]'),rubric=div.querySelector('[data-field=rubricId]');if(link.taskId)task.value=link.taskId;if(link.outcomeId)div.querySelector('[data-field=outcomeId]').value=link.outcomeId;const options=()=>{rubric.innerHTML=(data.tasks.find(t=>t.id===task.value)?.rubric||[]).map(r=>`<option value="${e(r.id)}">${e(r.title)} / ${e(r.maxScore)}</option>`).join('');};task.onchange=options;options();if(link.rubricId)rubric.value=link.rubricId;div.querySelector('button').onclick=()=>div.remove();}
+ data.matrix.links.forEach(row);dialog.querySelector('#matrix-add').onclick=()=>row();dialog.querySelector('#matrix-close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>dialog.remove());dialog.querySelector('form').onsubmit=async event=>{event.preventDefault();try{const links=[...host.children].map(div=>Object.fromEntries([...div.querySelectorAll('[data-field]')].map(input=>[input.dataset.field,input.dataset.field==='weight'?Number(input.value):input.value])));await api.request(`/api/teaching/classes/${encodeURIComponent(classId)}/outcome-matrix`,{method:'PUT',body:{expectedVersion:data.matrix.version,minSamples:Number(event.target.elements.minSamples.value),links}});dialog.close();await renderRoute();}catch(error){dialog.querySelector('#matrix-error').textContent=errorMessage(error);}};dialog.showModal();
  }catch(error){notice(errorMessage(error),'error');}
 }
 
@@ -614,7 +629,7 @@ async function openReplay(submissionId){
   <div class="replay-section"><h3>实验检测</h3>${current.checkResult?`<p class="small muted">检测结果只作为证据，最终成绩由教师按量规评定。</p>${checkHtml}`:checkHtml}</div>
   <div class="replay-section"><h3>场景快照</h3>${objectHtml}</div>
   ${detail.submission.note?`<div class="replay-section"><h3>学生说明</h3><p class="small">${e(detail.submission.note)}</p></div>`:''}
-  <div class="replay-section">${diffHtml}</div>`;
+  <div class="replay-section"><h3>成果附件</h3>${(detail.submission.files||[]).map(file=>`<p><a href="/api/teaching/files/${encodeURIComponent(file.id)}" download>${e(file.originalName)} (${Math.ceil(file.bytes/1024)}KB)</a></p>`).join('')||'<p>无附件</p>'}${detail.submission.sceneJson?`<a class="button secondary" target="_blank" rel="noopener" href="/lab/?preview=1&replay=${encodeURIComponent(submissionId)}">打开三维场景回放</a>`:''}</div><div class="replay-section">${diffHtml}</div>`;
  document.querySelector('#replay-dialog').showModal();
 }
 

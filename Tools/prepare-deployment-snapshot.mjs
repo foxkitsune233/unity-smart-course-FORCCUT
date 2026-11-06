@@ -1,0 +1,22 @@
+import {DatabaseSync} from 'node:sqlite';
+import {mkdirSync,existsSync,statSync,writeFileSync,readFileSync} from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const destination=path.join(root,'outputs','deployment',new Date().toISOString().replace(/[:.]/g,'-'));
+mkdirSync(destination,{recursive:true});
+const source=new DatabaseSync(path.join(root,'.course-portal-data','portal.sqlite'));
+source.exec("VACUUM INTO '"+path.join(destination,'portal.sqlite').replaceAll("'","''")+"'");
+source.close();
+const snapshot=new DatabaseSync(path.join(destination,'portal.sqlite'));
+snapshot.exec('DELETE FROM sessions');
+const counts={};
+for(const table of ['users','classes','class_members','tasks','submissions'])counts[table]=snapshot.prepare('SELECT COUNT(*) AS n FROM '+table).get().n;
+const integrity=snapshot.prepare('PRAGMA integrity_check').get();
+snapshot.close();
+const mapping=JSON.parse(readFileSync(path.join(root,'CoursePortal/server/local-media-map.json'),'utf8'));
+const videos=mapping.map(x=>{const file=path.join(root,'CourseVideos',x.relative);if(!existsSync(file))throw Error('Missing video: '+x.relative);return {...x,bytes:statSync(file).size};});
+writeFileSync(path.join(destination,'video-files.txt'),videos.map(x=>'CourseVideos/'+x.relative).join('\n')+'\n');
+writeFileSync(path.join(destination,'manifest.json'),JSON.stringify({createdAt:new Date().toISOString(),counts,integrity,videos,videoBytes:videos.reduce((s,x)=>s+x.bytes,0),note:'Private deployment snapshot. Live login sessions removed from the copy only.'},null,2));
+console.log(JSON.stringify({destination,counts,integrity,videoCount:videos.length,videoBytes:videos.reduce((s,x)=>s+x.bytes,0)},null,2));

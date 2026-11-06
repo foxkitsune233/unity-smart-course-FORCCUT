@@ -15,6 +15,23 @@ CREATE TABLE IF NOT EXISTS interventions(id TEXT PRIMARY KEY,class_id TEXT NOT N
 CREATE TABLE IF NOT EXISTS learning_records(user_id TEXT NOT NULL REFERENCES users(id),course_id TEXT NOT NULL,state_json TEXT NOT NULL,updated_at TEXT NOT NULL,PRIMARY KEY(user_id,course_id));
 CREATE TABLE IF NOT EXISTS grade_appeals(id TEXT PRIMARY KEY,submission_id TEXT NOT NULL REFERENCES submissions(id),class_id TEXT NOT NULL REFERENCES classes(id),task_id TEXT NOT NULL REFERENCES tasks(id),student_id TEXT NOT NULL REFERENCES users(id),reason TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open',decision TEXT,decision_note TEXT NOT NULL DEFAULT '',before_score REAL,after_score REAL,created_at TEXT NOT NULL,resolved_at TEXT,resolved_by TEXT);
 CREATE TABLE IF NOT EXISTS lab_templates(lab_id TEXT PRIMARY KEY,version INTEGER NOT NULL DEFAULT 1,title TEXT NOT NULL DEFAULT '',scene_json TEXT NOT NULL DEFAULT '{}',scripts_json TEXT NOT NULL DEFAULT '[]',checks_json TEXT NOT NULL DEFAULT '[]',hints_json TEXT NOT NULL DEFAULT '[]',updated_by TEXT,updated_at TEXT NOT NULL);
+-- 课程思政育人成效证据链（TC21）：目标 → 案例 → 任务/评分点 → 学生作品 → 评价。
+-- 目标为课程级；链接表把已发布案例挂到任务的量规评分点；证据表在批阅时锚定真实提交与分项分数。
+CREATE TABLE IF NOT EXISTS ideology_objectives(id TEXT PRIMARY KEY,course_id TEXT NOT NULL,code TEXT NOT NULL,title TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',created_by TEXT,created_at TEXT NOT NULL,UNIQUE(course_id,code));
+CREATE TABLE IF NOT EXISTS ideology_links(id TEXT PRIMARY KEY,course_id TEXT NOT NULL,class_id TEXT NOT NULL,case_id TEXT NOT NULL,objective_id TEXT NOT NULL,task_id TEXT NOT NULL,rubric_id TEXT NOT NULL,note TEXT NOT NULL DEFAULT '',created_by TEXT,created_at TEXT NOT NULL,UNIQUE(class_id,task_id,rubric_id,case_id));
+CREATE TABLE IF NOT EXISTS ideology_evidence(id TEXT PRIMARY KEY,course_id TEXT NOT NULL,class_id TEXT NOT NULL,link_id TEXT,objective_id TEXT NOT NULL,case_id TEXT NOT NULL,task_id TEXT NOT NULL,rubric_id TEXT NOT NULL,submission_id TEXT NOT NULL,student_id TEXT NOT NULL,score REAL,max_score REAL,feedback TEXT NOT NULL DEFAULT '',work_note TEXT NOT NULL DEFAULT '',by_teacher TEXT,at TEXT NOT NULL,UNIQUE(submission_id,rubric_id,case_id));
+CREATE INDEX IF NOT EXISTS idx_ideology_obj_course ON ideology_objectives(course_id);
+CREATE INDEX IF NOT EXISTS idx_ideology_link_class ON ideology_links(class_id);
+CREATE INDEX IF NOT EXISTS idx_ideology_evidence_class ON ideology_evidence(class_id);
+CREATE INDEX IF NOT EXISTS idx_ideology_evidence_student ON ideology_evidence(student_id);
+-- 课件/素材统一资源库（TC04）：来源与授权必填，审核状态机 + 独立版本号 + 不可变版本快照。
+CREATE TABLE IF NOT EXISTS resources(id TEXT PRIMARY KEY,course_id TEXT NOT NULL,class_id TEXT,kind TEXT NOT NULL,title TEXT NOT NULL,summary TEXT NOT NULL DEFAULT '',url TEXT NOT NULL DEFAULT '',source TEXT NOT NULL,authorization TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'draft',version INTEGER NOT NULL DEFAULT 1,owner_id TEXT NOT NULL,created_by TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,reviewed_by TEXT,reviewed_at TEXT,review_note TEXT NOT NULL DEFAULT '',published_at TEXT,offline_at TEXT);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_resource_unique ON resources(course_id,COALESCE(class_id,''),kind,title);
+CREATE TABLE IF NOT EXISTS resource_versions(id TEXT PRIMARY KEY,resource_id TEXT NOT NULL,version INTEGER NOT NULL,snapshot TEXT NOT NULL,actor TEXT,at TEXT NOT NULL,UNIQUE(resource_id,version));
+CREATE TRIGGER IF NOT EXISTS resource_versions_immutable_update BEFORE UPDATE ON resource_versions BEGIN SELECT RAISE(ABORT,'resource versions are immutable'); END;
+CREATE TRIGGER IF NOT EXISTS resource_versions_immutable_delete BEFORE DELETE ON resource_versions BEGIN SELECT RAISE(ABORT,'resource versions are immutable'); END;
+CREATE INDEX IF NOT EXISTS idx_resources_course ON resources(course_id,status);
+CREATE INDEX IF NOT EXISTS idx_resource_versions_resource ON resource_versions(resource_id,version);
 CREATE INDEX IF NOT EXISTS idx_class_members_student ON class_members(student_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_class ON tasks(class_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_task ON submissions(task_id);

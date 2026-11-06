@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace UnityCourseLab {
  public sealed partial class LabRuntime {
+  public string AIState="Patrol";public int AITransitions;
   public string AnimationState="Idle";public float AnimationSpeed;public int AnimationTransitions,AnimationEvents,AnimationJumps;public bool AnimationIdleSeen,AnimationWalkSeen,AnimationJumpSeen;
   public bool Grounded,CoordinateArrived;public int Jumps,RejectedJumps,RayHits,Triggers,PhysicsContacts,Health,InventoryCount,InventoryRejected,HealthChanges;public float CoordinateDistance;public LabVector WorldPosition,LocalPosition;
   readonly Dictionary<string,int> healthValues=new Dictionary<string,int>(),inventoryValues=new Dictionary<string,int>();LabCanvas labCanvas;
@@ -16,10 +17,11 @@ namespace UnityCourseLab {
    Completed=HealthChanges>=2&&InventoryRejected>0&&InventoryCount>0;if(labCanvas!=null)labCanvas.Refresh();Emit();
   }
   void ResetAdvanced(){ResetPersistence();ResetFeedback();if(labCanvas!=null){labCanvas.gameObject.SetActive(false);Destroy(labCanvas.gameObject);labCanvas=null;}AnimationState="Idle";AnimationSpeed=0;AnimationTransitions=AnimationEvents=AnimationJumps=0;AnimationIdleSeen=AnimationWalkSeen=AnimationJumpSeen=false;healthValues.Clear();inventoryValues.Clear();Grounded=CoordinateArrived=false;Jumps=RejectedJumps=RayHits=Triggers=PhysicsContacts=Health=InventoryCount=InventoryRejected=HealthChanges=0;CoordinateDistance=0;WorldPosition=LocalPosition=new LabVector();}
-  void StartAdvanced(){StartPersistence();StartFeedback();LabObject h=null,i=null;
+  void StartAdvanced(){StartPool();StartPersistence();StartFeedback();LabObject h=null,i=null;
    foreach(var o in session.Current.objects){var go=objects[o.id];if(!string.IsNullOrEmpty(o.settings.parent))go.transform.SetParent(objects[o.settings.parent].transform,true);
     if(o.scripts.Contains("physicsMove")||o.scripts.Contains("triggerProbe")||o.scripts.Contains("coordinateMove")||o.scripts.Contains("lookAtTarget")){var actor=go.AddComponent<AdvancedActor>();actor.Owner=this;actor.Definition=o;actor.Begin();}
     if(o.scripts.Contains("animatorController")){var actor=go.AddComponent<LabAnimatorActor>();actor.Owner=this;actor.Definition=o;actor.Begin();}
+    if(o.scripts.Contains("enemyAI")){var actor=go.AddComponent<LabEnemyAI>();actor.Owner=this;actor.Target=objects[o.settings.target].transform;actor.Speed=o.settings.speed;actor.DetectionRadius=o.settings.detectionRadius;actor.ViewAngle=o.settings.viewAngle;if(session.Current.experimentId=="lab09"){var input=actor.Target.gameObject.GetComponent<LabAITarget>();if(input==null)input=actor.Target.gameObject.AddComponent<LabAITarget>();input.Owner=this;}}
     if(o.scripts.Contains("healthController")){healthValues[o.id]=o.settings.maxHealth;Health=o.settings.maxHealth;h=o;}
     if(o.scripts.Contains("inventoryController")){inventoryValues[o.id]=0;i=o;}
    }

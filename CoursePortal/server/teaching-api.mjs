@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import {createOutcomeEvidence} from './outcome-evidence.mjs';
 import {HttpError,requireThat} from './validation.mjs';
 import {normalizeRubric,scoreRubric,courseTotal,rescaleRubric} from './grading.mjs';
 import {validateClass,validateTerm,validateRoster,validateTask,validateSubmission,validateGrading,validateScoreRevision,validateIntervention,validateTaskRules,validateAppeal,validateAppealDecision} from './teaching-validation.mjs';
@@ -12,6 +13,7 @@ const STAFF_VERBS=new Set([...CLIENT_VERBS,'submitted','assessed','confirmed','i
 // 权限原则：教师只见到自己被授权的教学班；学生只见到自己所在教学班的已下发任务。
 export function createTeachingApi({q,all,run,transaction,audit,needUser,membership,bodyOf,json,now=()=>new Date().toISOString()}){
  const stamp=now;
+ const outcomeEvidence=createOutcomeEvidence({q,all,run});
 
  function classById(id){const row=q('SELECT * FROM classes WHERE id=?',id);requireThat(row,404,'CLASS_NOT_FOUND','教学班不存在');return row;}
  // 教师是否被授权该教学班：主讲教师、班级助教/协同教师、课程负责人。
@@ -24,6 +26,21 @@ export function createTeachingApi({q,all,run,transaction,audit,needUser,membersh
   const isStaff=Boolean(staff);
   requireThat(isTeacher||isStaff||isCourseOwner,403,'CLASS_FORBIDDEN','你没有这个教学班的操作权限');
   return {class:cls,role:isTeacher||isCourseOwner?'owner':staff.role,isCourseOwner};
+ }
+ // 思政育人成效证据（TC21）：只针对已把案例挂接到该任务评分点的维度，
+ // 在批阅/改分后把真实分项分数、评语、作品说明锚定到具体提交，随改分同步刷新。
+ function syncIdeologyEvidence(submission,task,items,feedback,user){
+  const links=all('SELECT * FROM ideology_links WHERE task_id=?',task.id);
+  if(!links.length)return;
+  const byRubric=new Map((Array.isArray(items)?items:[]).map(x=>[x.id,x]));
+  for(const link of links){
+   const item=byRubric.get(link.rubric_id);if(!item)continue;
+   run(`INSERT INTO ideology_evidence(id,course_id,class_id,link_id,objective_id,case_id,task_id,rubric_id,submission_id,student_id,score,max_score,feedback,work_note,by_teacher,at)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(submission_id,rubric_id,case_id) DO UPDATE SET score=excluded.score,max_score=excluded.max_score,feedback=excluded.feedback,work_note=excluded.work_note,by_teacher=excluded.by_teacher,at=excluded.at`,
+    'iev-'+randomUUID(),task.course_id,task.class_id,link.id,link.objective_id,link.case_id,task.id,link.rubric_id,
+    submission.id,submission.student_id,item.score,item.maxScore,feedback||'',submission.note||'',user.username,stamp());
+  }
  }
  // 学生是否是该班在册成员（离班后保留历史证据，但不再开放新任务）
  function studentInClass(user,classId){
@@ -222,6 +239,12 @@ function classReport(classId){
  const averages=analyticsData.students.map(s=>s.average).filter(v=>v!=null).sort((a,b)=>a-b);
  const totals=analyticsData.students.map(s=>s.courseTotal).filter(v=>v!=null);
  const median=list=>list.length?(list.length%2?list[(list.length-1)/2]:(list[list.length/2-1]+list[list.length/2])/2):null;
+ const quizAttempts=all("SELECT owner_id AS studentId,payload,at FROM tool_items WHERE kind='attempts' AND class_id=?",classId).map(row=>{try{return {...JSON.parse(row.payload),studentId:row.studentId,at:row.at};}catch{return null;}}).filter(Boolean);
+ const latestQuiz=new Map();for(const attempt of quizAttempts){const key=attempt.studentId+'|'+attempt.quizId,old=latestQuiz.get(key);if(!old||Date.parse(old.createdAt||old.at||0)<Date.parse(attempt.createdAt||attempt.at||0))latestQuiz.set(key,attempt);}
+ const quizByStudent=new Map();for(const attempt of latestQuiz.values()){const scores=quizByStudent.get(attempt.studentId)||[];scores.push(Number(attempt.score));quizByStudent.set(attempt.studentId,scores);}
+ const combinedTotals=analyticsData.students.map(student=>{const scores=(quizByStudent.get(student.studentId)||[]).filter(Number.isFinite),quizScore=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length*100)/100:null,taskScore=student.courseTotal;const total=taskScore!=null&&quizScore!=null?Math.round((taskScore*.8+quizScore*.2)*100)/100:taskScore??quizScore??null;return {studentId:student.studentId,studentNo:student.studentNo,name:student.name,taskScore,quizScore,total,taskWeight:taskScore!=null&&quizScore!=null?80:taskScore!=null?100:0,quizWeight:taskScore!=null&&quizScore!=null?20:quizScore!=null?100:0};});
+ const combinedValues=combinedTotals.map(x=>x.total).filter(x=>x!=null);
+ const quizSummary={quizzes:new Set(quizAttempts.map(x=>x.quizId)).size,attempted:latestQuiz.size,studentsWithQuiz:quizByStudent.size,average:quizAttempts.length?Math.round([...latestQuiz.values()].reduce((sum,x)=>sum+Number(x.score||0),0)/latestQuiz.size*100)/100:null,note:'同一测验仅计学生最后一次提交；测验与任务均有成绩时按任务80%、测验20%归一，只有一个来源时该来源占100%。'};
 
  const outcomeRows=outcomes.map(o=>{
   const related=links.filter(l=>l.outcomeId===o.id&&liveTasks.some(t=>t.id===l.taskId));
@@ -243,7 +266,14 @@ function classReport(classId){
   {kind:'revision',label:'改分留痕',count:q("SELECT COUNT(*) AS n FROM score_revisions r JOIN submissions s ON s.id=r.submission_id JOIN tasks t ON t.id=s.task_id WHERE t.class_id=?",classId)?.n||0,note:'每次改分都有理由与操作人'},
   {kind:'appeal',label:'成绩复核',count:q("SELECT COUNT(*) AS n FROM grade_appeals WHERE class_id=?",classId)?.n||0,note:'学生申请与教师处理记录'},
   {kind:'intervention',label:'辅导记录',count:q("SELECT COUNT(*) AS n FROM interventions WHERE class_id=?",classId)?.n||0,note:'预警后的干预与结案'},
+  {kind:'ideology',label:'思政评价证据',count:q("SELECT COUNT(*) AS n FROM ideology_evidence WHERE class_id=?",classId)?.n||0,note:'案例→任务评分点→学生作品→分项评价，可追溯且随改分同步'},
  ];
+ const ideology={
+  evidenceCount:q("SELECT COUNT(*) AS n FROM ideology_evidence WHERE class_id=?",classId)?.n||0,
+  objectiveCount:q("SELECT COUNT(*) AS n FROM ideology_objectives WHERE course_id=?",classById(classId).course_id)?.n||0,
+  linkCount:q("SELECT COUNT(*) AS n FROM ideology_links WHERE class_id=?",classId)?.n||0,
+  students:q("SELECT COUNT(DISTINCT student_id) AS n FROM ideology_evidence WHERE class_id=?",classId)?.n||0,
+ };
  const improvements=all(`SELECT i.id,i.kind,i.note,i.actor,i.at,i.closed_at AS closedAt,m.display_name AS displayName
   FROM interventions i JOIN class_members m ON m.student_id=i.student_id AND m.class_id=i.class_id
   WHERE i.class_id=? ORDER BY i.at DESC`,classId);
@@ -262,13 +292,28 @@ function classReport(classId){
   score:{average:averages.length?Math.round(averages.reduce((a,b)=>a+b,0)/averages.length*100)/100:null,
    median:median(averages),max:averages.length?averages[averages.length-1]:null,min:averages.length?averages[0]:null,
    passRate:averages.length?Math.round(averages.filter(v=>v>=60).length/averages.length*10000)/100:null,
-   courseAverage:totals.length?Math.round(totals.reduce((a,b)=>a+b,0)/totals.length*100)/100:null},
-  outcomes:outcomeRows,evidence,improvements,risks,
+   courseAverage:combinedValues.length?Math.round(combinedValues.reduce((a,b)=>a+b,0)/combinedValues.length*100)/100:null},
+  quizSummary,combinedTotals,
+  outcomes:outcomeRows,evidence,improvements,risks,ideology,
   note:'目标达成按任务在总评中的占比加权；无关联任务的目标记为空，不用估算值填充。',
  };
 }
 
+function scopedReport(classId,url){
+ const base=classReport(classId),calc=outcomeEvidence.calculate(classId,courseOutcomes(classById(classId).course_id),url);
+ base.matrixVersion=calc.matrix.version;base.algorithm=calc.algorithm;base.range=calc.range;base.submissionEvidence=calc.submissionEvidence;
+ if(calc.matrix.version){base.outcomes=calc.outcomes;base.note='按已发布成绩的最新有效提交与评分点贡献计算；低于最小样本量时显示证据不足。矩阵版本 '+calc.matrix.version+'，算法 '+calc.algorithm;}
+ if(calc.range.from||calc.range.to){if(!calc.matrix.version)base.outcomes=base.outcomes.map(o=>({...o,achieved:null,tasks:[],evidenceStatus:'请先配置评分点矩阵以计算区间达成度'}));const normalized=calc.graded.map(s=>s.score/calc.tasks.find(t=>t.id===s.task_id).max_score*100).sort((a,b)=>a-b),count=normalized.length;const byStudent=new Map();for(const s of calc.graded){const t=calc.tasks.find(t=>t.id===s.task_id);const values=byStudent.get(s.student_id)||[];values.push({normalized:s.score/t.max_score*100,weight:t.weight});byStudent.set(s.student_id,values);}const totals=[...byStudent.values()].map(v=>courseTotal(v).total).filter(x=>x!=null);
+ base.score={average:count?normalized.reduce((a,b)=>a+b,0)/count:null,median:count?(normalized[Math.floor((count-1)/2)]+normalized[Math.floor(count/2)])/2:null,min:count?normalized[0]:null,max:count?normalized[count-1]:null,passRate:count?normalized.filter(x=>x>=60).length/count*100:null,courseAverage:totals.length?totals.reduce((a,b)=>a+b,0)/totals.length:null};
+ base.totals.submitted=calc.submissions.length;base.totals.graded=calc.submissions.filter(s=>s.status==='graded').length;
+ for(const e of base.evidence){if(e.kind==='submission')e.count=calc.submissions.length;if(e.kind==='check')e.count=calc.submissions.filter(s=>s.check_result!=null).length;if(e.kind==='graded')e.count=base.totals.graded;if(e.kind==='revision')e.count=all('SELECT r.at FROM score_revisions r JOIN submissions s ON s.id=r.submission_id JOIN tasks t ON t.id=s.task_id WHERE t.class_id=?',classId).filter(x=>calc.inRange(x.at)).length;if(e.kind==='appeal')e.count=all('SELECT created_at FROM grade_appeals WHERE class_id=?',classId).filter(x=>calc.inRange(x.created_at)).length;if(e.kind==='intervention')e.count=all('SELECT at FROM interventions WHERE class_id=?',classId).filter(x=>calc.inRange(x.at)).length;}
+ base.improvements=base.improvements.filter(x=>calc.inRange(x.at));base.risks=[];base.note+='；时间区间按提交时间筛选，风险名单请查看班级实时学情。';
+ }
+ return base;
+}
 const routes=[
+ ['GET','/api/teaching/classes/:id/outcome-matrix',async ctx=>{const user=needUser(ctx.session);const access=classAccess(user,ctx.params.id);ctx.json(200,{matrix:outcomeEvidence.read(ctx.params.id),outcomes:courseOutcomes(access.class.course_id),tasks:all('SELECT * FROM tasks WHERE class_id=?',ctx.params.id).map(taskPayload)});} ],
+ ['PUT','/api/teaching/classes/:id/outcome-matrix',async ctx=>{const user=needUser(ctx.session);const access=classAccess(user,ctx.params.id);requireThat(access.role!=='assistant',403,'FORBIDDEN','助教不能修改达成矩阵');const b=await bodyOf(ctx.req);const matrix=outcomeEvidence.write(access.class,courseOutcomes(access.class.course_id),user,b);audit(user,'outcome.matrix.saved',ctx.params.id+':'+matrix.version);ctx.json(200,{matrix});}],
   // ===== 学期 =====
   ['POST','/api/teaching/terms',async(ctx)=>{
    const user=needUser(ctx.session);requireThat(user.global_role!=='student',403,'FORBIDDEN','学生账号不能管理学期');
@@ -506,6 +551,7 @@ const routes=[
    if(task.due_at&&task.allow_late!==1&&Date.parse(task.due_at)<now)requireThat(false,409,'DEADLINE_PASSED','已超过截止时间且不允许补交');
    if(task.opens_at&&Date.parse(task.opens_at)>now)requireThat(false,409,'NOT_OPEN','任务尚未开放');
    const attempt=attempts+1;const id='sub-'+randomUUID();const at=stamp();
+   const attachmentBytes=data.attachmentIds.reduce((sum,id)=>sum+(q('SELECT bytes FROM submission_files WHERE id=?',id)?.bytes||0),0);requireThat(attachmentBytes<=500*1024*1024,413,'ATTACHMENT_LIMIT','提交附件合计不能超过500MB');
    transaction(()=>{
     run(`INSERT INTO submissions(id,task_id,student_id,attempt,idempotency_key,scene_json,note,check_result,status,score,rubric_scores_json,feedback,submitted_at,graded_at,graded_by,released)
      VALUES(?,?,?,?,?,?,?,?,?,NULL,NULL,'',?,NULL,NULL,0)`,
@@ -539,6 +585,7 @@ const routes=[
      scored.total,JSON.stringify(scored.items),data.feedback,stamp(),user.id,data.released?1:0,ctx.params.id);
     if(before!==scored.total)run('INSERT INTO score_revisions(submission_id,before_score,after_score,before_json,after_json,reason,actor,at) VALUES(?,?,?,?,?,?,?,?)',
      ctx.params.id,before,scored.total,submission.rubric_scores_json,JSON.stringify(scored.items),'首次批阅',user.username,stamp());
+    syncIdeologyEvidence(submission,task,scored.items,data.feedback,user);
     audit(user,'submission.graded',ctx.params.id);
    });
    ctx.json(200,{submission:{id:ctx.params.id,status:'graded',score:scored.total,normalized:scored.normalized,items:scored.items,feedback:data.feedback,released:data.released}});
@@ -563,6 +610,7 @@ const routes=[
      data.score===null?null:rescale.total,JSON.stringify(rescale.items),stamp(),user.id,data.score===null?0:1,ctx.params.id);
     run('INSERT INTO score_revisions(submission_id,before_score,after_score,before_json,after_json,reason,actor,at) VALUES(?,?,?,?,?,?,?,?)',
      ctx.params.id,before,data.score===null?null:rescale.total,submission.rubric_scores_json,JSON.stringify(rescale.items),data.reason,user.username,stamp());
+    syncIdeologyEvidence(submission,task,rescale.items,submission.feedback,user);
     audit(user,'submission.revised',ctx.params.id);
    });
    ctx.json(200,{submission:{id:ctx.params.id,score:data.score===null?null:rescale.total,items:rescale.items,
@@ -699,18 +747,25 @@ const routes=[
   }],
   ['GET','/api/teaching/classes/:id/report',async(ctx)=>{
    const user=needUser(ctx.session);classAccess(user,ctx.params.id);
-   ctx.json(200,classReport(ctx.params.id));
+   ctx.json(200,scopedReport(ctx.params.id,ctx.url));
   }],
   // 质量报告导出为可打印 HTML：目标达成、成绩概览、证据材料、改进记录、风险名单一次带走。
   ['GET','/api/teaching/classes/:id/report/export',async(ctx)=>{
    const user=needUser(ctx.session);classAccess(user,ctx.params.id);
-   const report=classReport(ctx.params.id);
+   const report=scopedReport(ctx.params.id,ctx.url);
    const esc=value=>String(value??'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
    const pct=value=>value==null?'—':value+'%';
    const rows=report.outcomes.map(o=>`<tr><td>${esc(o.code)}</td><td>${esc(o.description)}</td><td>${o.linked?'<span class="ok">已关联</span>':'<span class="muted">未关联任务</span>'}</td><td class="num">${pct(o.achieved)}</td></tr>`).join('');
    const evidence=report.evidence.map(item=>`<li><strong>${esc(item.label)}</strong><span class="num">${item.count}</span><small>${esc(item.note)}</small></li>`).join('');
    const improvements=report.improvements.length?report.improvements.map(item=>`<li><strong>${esc(item.displayName)}</strong> · ${esc(item.kind)} · ${esc(item.note)}<small>${esc(item.actor)} · ${esc(item.at)}${item.closedAt?' · 已结案':' · 跟进中'}</small></li>`).join(''):'<li class="muted">本周期没有辅导记录。</li>';
    const risks=report.risks.length?report.risks.map(r=>`<tr><td>${esc(r.studentNo)}</td><td>${esc(r.name)}</td><td>${esc(r.reason)}</td><td class="num">${r.average==null?'—':r.average}</td><td class="num">${r.confirmed}/${r.tasksTotal}</td></tr>`).join(''):'<tr><td colspan="5" class="muted">暂无风险学生。</td></tr>';
+   // 课程思政育人成效证据链明细（TC21）：目标 → 已发布案例 → 任务评分点 → 作品 → 分项评价。
+   const ideoRows=all(`SELECT e.*,o.code AS objCode,o.title AS objTitle,t.title AS taskTitle,m.display_name AS studentName,m.student_no AS studentNo
+    FROM ideology_evidence e LEFT JOIN ideology_objectives o ON o.id=e.objective_id LEFT JOIN tasks t ON t.id=e.task_id
+    LEFT JOIN class_members m ON m.student_id=e.student_id AND m.class_id=e.class_id WHERE e.class_id=? ORDER BY e.at DESC`,ctx.params.id);
+   const caseTitles=new Map(all("SELECT id,payload FROM tool_items WHERE kind='cases'").map(r=>{try{return [r.id,JSON.parse(r.payload).title||r.id];}catch{return [r.id,r.id];}}));
+   const rubricTitles=new Map();for(const t of all('SELECT id,rubric_json FROM tasks WHERE class_id=?',ctx.params.id)){try{for(const d of JSON.parse(t.rubric_json||'[]'))rubricTitles.set(t.id+':'+d.id,d.title);}catch{}}
+   const ideoTable=ideoRows.length?`<table><thead><tr><th>思政目标</th><th>案例</th><th>任务 · 评分点</th><th>学生</th><th class="num">分项得分</th><th>教师评语</th></tr></thead><tbody>${ideoRows.map(x=>`<tr><td>${esc(x.objCode||'')} ${esc(x.objTitle||'')}</td><td>${esc(caseTitles.get(x.case_id)||x.case_id)}</td><td>${esc(x.taskTitle||'')}<small>${esc(rubricTitles.get(x.task_id+':'+x.rubric_id)||x.rubric_id)}</small></td><td>${esc(x.studentNo||'')} ${esc(x.studentName||'')}</td><td class="num">${x.score??'—'} / ${x.max_score??'—'}</td><td>${esc(x.feedback)||'<span class="muted">无</span>'}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">本班尚未产生思政评价证据。需先建立思政目标、发布案例并挂接到任务评分点，再批阅对应提交。</p>';
    const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${esc(report.className)} · 课程质量报告</title>
 <style>
 body{font:14px/1.7 "Microsoft YaHei",system-ui,sans-serif;color:#172c3e;max-width:920px;margin:40px auto;padding:0 24px}
@@ -723,12 +778,13 @@ th{background:#f7f9fa;font-weight:600;font-size:12px;color:#52616e}
 .card{flex:1 1 150px;border:1px solid #e6ebef;border-radius:10px;padding:12px 14px}
 .card span{display:block;font-size:12px;color:#71808e}.card strong{font-size:22px}
 ul{list-style:none;padding:0;margin:0}li{padding:8px 0;border-bottom:1px solid #f2f5f6}
-li small{display:block;color:#71808e;font-size:12px}li .num{float:right;font-weight:700}
+li small{display:block;color:#71808e;font-size:12px}li .num{float:right;font-weight:700}td small{display:block;color:#71808e;font-size:11px;margin-top:3px}
 .ok{color:#087f70}.muted{color:#a8bcc7}
 @media print{body{margin:0}h2{page-break-after:avoid}}
 </style></head><body>
 <h1>${esc(report.className)} · 课程质量报告</h1>
-<p class="meta">${esc(report.courseTitle)} · 生成时间 ${esc(report.generatedAt)} · 数据来源：平台真实提交与批阅记录</p>
+<p class="meta">${esc(report.courseTitle)} · 生成时间 ${esc(report.generatedAt)} · 数据来源：平台真实提交与批阅记录 · 范围 ${esc(report.range.from||'全部')} 至 ${esc(report.range.to||'全部')} · 矩阵v${report.matrixVersion} · ${esc(report.algorithm)}</p>
+<details><summary>评分点证据（任务、提交、版本及分项）</summary><pre>${esc(JSON.stringify(report.submissionEvidence,null,2))}</pre></details>
 <div class="cards">
 <div class="card"><span>在册学生</span><strong>${report.totals.students}</strong></div>
 <div class="card"><span>已下发任务</span><strong>${report.totals.tasks}</strong></div>
@@ -743,6 +799,9 @@ li small{display:block;color:#71808e;font-size:12px}li .num{float:right;font-wei
 <h2>三、教学改进记录</h2><ul>${improvements}</ul>
 <h2>四、需要关注的学生</h2>
 <table><thead><tr><th>学号</th><th>姓名</th><th>原因</th><th class="num">平均分</th><th class="num">已确认</th></tr></thead><tbody>${risks}</tbody></table>
+<h2>五、课程思政育人成效证据</h2>
+<p class="meta">思政目标 ${report.ideology.objectiveCount} 项 · 案例挂接 ${report.ideology.linkCount} 条 · 覆盖学生 ${report.ideology.students} 名 · 评价证据 ${report.ideology.evidenceCount} 条。每条证据均锚定真实提交与量规分项，不以说明文字或点击量认定成效。</p>
+${ideoTable}
 <p class="meta">本报告由课程平台自动生成，分数与达成度均可追溯到具体提交与批阅记录。</p>
 </body></html>`;
    ctx.res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Content-Disposition':`attachment; filename="report-${encodeURIComponent(report.className)}.html"`,'Cache-Control':'no-store'});

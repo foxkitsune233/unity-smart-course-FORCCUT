@@ -9,6 +9,7 @@ namespace UnityCourseLab {
    visual=new GameObject("Visual");visual.transform.SetParent(transform,false);
    var filter=visual.AddComponent<MeshFilter>();filter.sharedMesh=GetComponent<MeshFilter>().sharedMesh;
    var renderer=visual.AddComponent<MeshRenderer>();renderer.sharedMaterial=GetComponent<Renderer>().sharedMaterial;GetComponent<Renderer>().enabled=false;
+   var character=CourseArt.Place(visual.transform,"character",transform.position-Vector3.up*.5f,1.4f);if(character!=null)renderer.enabled=false;
    Animator=gameObject.AddComponent<Animator>();Animator.runtimeAnimatorController=controller;Animator.applyRootMotion=false;Animator.cullingMode=AnimatorCullingMode.AlwaysAnimate;Animator.speed=Definition.settings.animationSpeed;
    Animator.Rebind();Animator.Update(0);Observe();
   }
